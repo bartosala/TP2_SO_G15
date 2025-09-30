@@ -1,2 +1,2 @@
-docker pull agodio/itba-so:2.0
-docker run -v ${PWD}:/root --security-opt seccomp:unconfined --name tpe_arqui_g17 -ti agodio/itba-so:2.0 
+docker pull agodio/itba-so-multi-platform:3.0
+docker run -v "${PWD}:/root" --privileged --name tp_so_g15 -ti agodio/itba-so-multi-platform:3.0 
