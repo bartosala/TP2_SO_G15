@@ -117,6 +117,8 @@ void shell() {
         char arg[BUFFER_SPACE] = {0};
         instruction = getInstruction(arg); // Lee el comando que ingresa el usuario en la shell
         switch(instruction) {
+// TIENEN QUE SER EJECUTADOS COMO PROCESOS Y NO COMO SHELL BUILTINS  !!!!!!! HANDLER !!!
+
             case HELP: {
                 printf("\n");
                 printf(help); 
@@ -164,6 +166,10 @@ void shell() {
                 syscall_clearScreen();
                 break;
             }
+
+
+
+
             default: {
                 break;
             }
