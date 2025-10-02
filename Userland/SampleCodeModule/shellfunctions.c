@@ -1,7 +1,7 @@
 #include <shellfunctions.h>
 #include <syscall.h>
 #include <stdlib.h>
-#include <testfuncions.h>
+#include <testfunctions.h>
 
 #define CANT_REGISTERS 19
 
