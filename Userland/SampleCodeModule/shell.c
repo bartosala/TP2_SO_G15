@@ -9,24 +9,11 @@
 #define MAX_ECHO 1000
 #define MAX_USERNAME_LENGTH 16
 #define PROMPT "%s$>"
-#define CANT_INSTRUCTIONS 11
+#define CANT_INSTRUCTIONS 10
+#define TRUE 1
 uint64_t curr = 0;
 
-extern void div_zero();
-extern void invalid_opcode();
 
-char * help =   " Lista de comandos disponibles:\n"        
-                "    - exit: corta la ejecucion\n"
-                "    - help: muestra este menu\n"
-                "    - snake: juego de snakes\n"
-                "    - time: muestra la hora actual GMT-3\n"
-                "    - registers: muestra el ultimo snapshot (tocar ESC)\n"
-                "    - echo: imprime lo que le sigue a echo\n"
-                "    - size_up: aumenta tamano de fuente\n"
-                "    - size_down: decrementa tamano de fuente\n"
-                "    - test_div_0: test zero division exception\n"
-                "    - test_invalid_opcode: test invalid opcode exception\n"
-                "    - clear: borra la pantalla y comienza arriba\n";
 
 typedef enum {
     EXIT = 0,
@@ -44,7 +31,6 @@ typedef enum {
 
 static char * inst_list[CANT_INSTRUCTIONS] = {"exit", 
                                             "help", 
-                                            "snake", 
                                             "time", 
                                             "registers", 
                                             "echo", 
@@ -54,6 +40,18 @@ static char * inst_list[CANT_INSTRUCTIONS] = {"exit",
                                             "test_invalid_opcode", 
                                             "clear"
                                             };
+
+void (*handler_instruction[CANT_INSTRUCTIONS-1])(char *) = {
+    help_handler,
+    time_handler,
+    registers_handler,
+    echo_handler,
+    size_up_handler,
+    size_down_handler,
+    test_div_0_handler,
+    test_invalid_opcode_handler,
+    clear_handler
+};
 
 
 int verify_instruction(char * instruction){
@@ -104,7 +102,7 @@ void shell() {
     syscall_sizeUpFont(1);
     printf("  Bienvenido a la shell\n\n");
     syscall_sizeDownFont(1);
-    printf(help);
+    help_handler(0); // Muestra la ayuda al iniciar la shell
     // pedir username
     printf("Ingrese su nombre de usuario: ");
     char username[MAX_USERNAME_LENGTH];
@@ -112,75 +110,19 @@ void shell() {
     unsigned int exit = EXIT; // 0
     int instruction;
     syscall_clearScreen();
-    while(!exit){
+       while(!exit){
         printf(PROMPT, username);
         char arg[BUFFER_SPACE] = {0};
-        instruction = getInstruction(arg); // Lee el comando que ingresa el usuario en la shell
-        switch(instruction) {
-// TIENEN QUE SER EJECUTADOS COMO PROCESOS Y NO COMO SHELL BUILTINS  !!!!!!! HANDLER !!!
-
-            case HELP: {
-                printf("\n");
-                printf(help); 
-                break;
-            }
-            case SNAKE: {
-                runSnake();
-                break;
-            }
-            case TIME: {
-                showTime();
-                break;
-            }
-            case REGISTERS: {
-                showRegisters();
-                break;
-            }
-            case TEST_DIV_0: {
-                div_zero(); // Funcion de asm
-                break;
-            }
-            case ECHO: {
-                printf("%s\n", arg);
-                break;
-            }
-            case SIZE_UP: {
-                syscall_sizeUpFont(1);
-                syscall_clearScreen();
-                break;
-            }
-            case SIZE_DOWN: {
-                syscall_sizeDownFont(1);
-                syscall_clearScreen();
-                break;
-            }
-            case EXIT : {
-                exit = 1;
-                break;
-            }
-            case TEST_INVALID_OPCODE: {
-                invalid_opcode(); // Funcion de asm
-                break;
-            }
-            case CLEAR : {
-                syscall_clearScreen();
-                break;
-            }
-
-
-
-
-            default: {
-                break;
-            }
-
-            // Salto al proximo renglon si la instruccion no es Snake : 
-
-            if(instruction != SNAKE){
-                printf("\n");
+        instruction = getInstruction(arg); 
+        if(instruction != -1){
+            if(instruction != EXIT){
+                // handler_instruction is indexed starting at 0 for "help",
+                // while EXIT == 0 in inst_list, so use instruction - 1
+                handler_instruction[instruction - 1](arg);
+            } else {
+                exit = TRUE;
             }
         }
-        
     }
     printf("Saliendo de la terminal...\n");
     syscall_wait(2000);
