@@ -2,14 +2,13 @@
 #include <shell.h>
 #include <stdlib.h>
 #include <syscall.h>
-#include <snake.h>
 #include <stdint.h>
 
 #define BUFFER_SPACE 1000
 #define MAX_ECHO 1000
 #define MAX_USERNAME_LENGTH 16
 #define PROMPT "%s$>"
-#define CANT_INSTRUCTIONS 10
+#define CANT_INSTRUCTIONS 14
 #define TRUE 1
 uint64_t curr = 0;
 
@@ -26,7 +25,11 @@ typedef enum {
     SIZE_DOWN,
     TEST_DIV_0,
     TEST_INVALID_OPCODE,
-    CLEAR
+    CLEAR,
+    TEST_MM,
+    TEST_PROCESSES,
+    TEST_PRIO,
+    TEST_SYNC
 } instructions;
 
 static char * inst_list[CANT_INSTRUCTIONS] = {"exit", 
@@ -38,7 +41,11 @@ static char * inst_list[CANT_INSTRUCTIONS] = {"exit",
                                             "size_down",
                                             "test_div_0", 
                                             "test_invalid_opcode", 
-                                            "clear"
+                                            "clear",
+                                            "test_mm",
+                                            "test_processes",
+                                            "test_prio",
+                                            "test_sync"
                                             };
 
 void (*handler_instruction[CANT_INSTRUCTIONS-1])(char *) = {
@@ -50,7 +57,11 @@ void (*handler_instruction[CANT_INSTRUCTIONS-1])(char *) = {
     size_down_handler,
     test_div_0_handler,
     test_invalid_opcode_handler,
-    clear_handler
+    clear_handler,
+    test_mm_handler,
+    test_processes_handler,
+    test_prio_handler,
+    test_sync_handler
 };
 
 

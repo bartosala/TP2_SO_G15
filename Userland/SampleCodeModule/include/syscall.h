@@ -20,8 +20,6 @@ uint64_t syscall_getHeight();
 uint64_t syscall_getWidth();
 uint64_t syscall_wait(uint64_t ticks);
 
-// Añado las del git (les tendria que cambiar el nombre) : 
-
 int64_t my_getpid();
 int64_t my_create_process(char *name, uint64_t argc, char *argv[]);
 int64_t my_nice(uint64_t pid, uint64_t newPrio);
@@ -34,6 +32,5 @@ int64_t my_sem_post(char *sem_id);
 int64_t my_sem_close(char *sem_id);
 int64_t my_yield();
 int64_t my_wait(int64_t pid);
-
 
 #endif

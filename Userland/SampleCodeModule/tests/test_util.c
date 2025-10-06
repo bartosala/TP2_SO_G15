@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include <stdio.h>
-#include "syscall.h"
+#include <syscall.h>
+#include "test_util.h"
+#include <testfunctions.h>
 
 // Random
 static uint32_t m_z = 362436069;
@@ -27,6 +29,14 @@ uint8_t memcheck(void *start, uint8_t value, uint32_t size) {
       return 0;
 
   return 1;
+}
+
+void *my_memset(void *final, int mem, uint32_t c) {
+  unsigned char *p = (unsigned char *)final;
+  for(int i = 0; i < c; i++){
+    *p++ = (unsigned char)mem;
+  }
+  return final;
 }
 
 // Parameters

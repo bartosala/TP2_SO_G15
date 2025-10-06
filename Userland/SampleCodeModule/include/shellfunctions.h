@@ -16,6 +16,10 @@ void size_down_handler(char *arg);
 void test_div_0_handler(char *arg);
 void test_invalid_opcode_handler(char *arg);
 void clear_handler(char *arg);
-
+// test catedra
+void test_mm_handler(char *arg);
+void test_processes_handler(char *arg);
+void test_prio_handler(char *arg);
+void test_sync_handler(char *arg);
 
 #endif //SHELLFUNCTIONS_H

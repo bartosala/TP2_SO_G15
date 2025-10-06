@@ -9,7 +9,28 @@
 */
 extern int64_t syscall(uint64_t code, uint64_t param1, uint64_t param2, uint64_t param3);
 
-enum syscall_number {NULL, READ, WRITE, TIME, BEEP, DRAW_RECTANGLE, GET_REGISTERS, CLEAR_SCREEN, SIZE_UP_FONT, SIZE_DOWN_FONT, GET_HEIGHT, GET_WIDTH, WAIT, TOGGLE_CURSOR};
+enum syscall_number {NULL,
+   READ,
+    WRITE,
+     TIME,
+      BEEP,
+       DRAW_RECTANGLE,
+        GET_REGISTERS,
+         CLEAR_SCREEN,
+          SIZE_UP_FONT,
+           SIZE_DOWN_FONT,
+            GET_HEIGHT,
+             GET_WIDTH,
+              WAIT,
+               TOGGLE_CURSOR,
+               ALLOC_MEMORY, 
+                FREE_MEMORY,
+                  CREATE_PROCESS,
+                    GETPID,
+                      KILL,
+                        BLOCK,
+                          UNBLOCK
+              };
 
 uint64_t syscall_read(char * buff, uint64_t len){
     return syscall(READ, (uint64_t)buff, len, 0);
@@ -57,6 +78,34 @@ uint64_t syscall_getWidth(){
 
 uint64_t syscall_wait(uint64_t ticks){
     return syscall(WAIT, ticks, 0, 0);
+}
+
+void *syscall_allocMemory(uint64_t size) {
+    return (void *)syscall(ALLOC_MEMORY, size, 0, 0);
+}
+
+void syscall_freeMemory(void *address) {
+    syscall(FREE_MEMORY, (uint64_t)address, 0, 0);
+}
+
+uint64_t syscall_create_process(char *name, uint64_t argc, char *argv[]) {
+    return syscall(CREATE_PROCESS, (uint64_t)name, argc, (uint64_t)argv);
+}
+
+uint64_t syscall_getpid() {
+    return syscall(GETPID, 0, 0, 0);
+}
+
+uint64_t syscall_kill(uint64_t pid) {
+    return syscall(KILL, pid, 0, 0);
+}
+
+uint64_t syscall_block(uint64_t pid) {
+    return syscall(BLOCK, pid, 0, 0);
+}
+
+uint64_t syscall_unblock(uint64_t pid) {
+    return syscall(UNBLOCK, pid, 0, 0);
 }
 
 // Añado las del git : 
