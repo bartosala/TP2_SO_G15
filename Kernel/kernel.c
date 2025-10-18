@@ -8,6 +8,8 @@
 #include <videoDriver.h>
 #include <textModule.h>
 #include <keyboardDriver.h>
+#include <memoryManager.h>
+#include <defs.h>
 
 #define WHITE 0x00FFFFFF
 
@@ -67,13 +69,8 @@ int main()
 	fontSizeUp(2);
 	printStr(" TPE ARQUI \n", WHITE);
 	fontSizeDown(2);
-	
-	printStr("\nConfigurando\n\n", WHITE);
-	printSlow("    1- La IDT ya fue cargada\n", WHITE, 30);
-	wait_ticks(40);
-	printSlow("    2- Cargando la shell",WHITE, 30);
-	printSlow("...",WHITE,1000);
-	
+
+	createMemoryManager(HEAP_ADDRESS, HEAP_SIZE);
 	clear_buffer();
 	
 	((EntryPoint)sampleCodeModuleAddress)(); // Llamada al userland
