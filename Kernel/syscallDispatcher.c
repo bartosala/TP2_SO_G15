@@ -111,16 +111,13 @@ static uint64_t syscall_unblock(uint64_t pid){
 }
 
 static uint64_t syscall_allocMemory(uint64_t size) {
-    MemoryManagerADT mm = NULL; 
-    return (uint64_t)allocMemory(mm, size);
+    return (uint64_t)allocMemory(size);
 }
 
 static uint64_t syscall_freeMemory(uint64_t address) {
-    MemoryManagerADT mm = (MemoryManagerADT)MEMORY_MANAGER_ADDRESS; 
-    freeMemory(mm, (void*)address);
+    freeMemory((void*)address);
     return 0;
 }
-
 
 // Prototipos de las funciones de syscall
 uint64_t syscallDispatcher(uint64_t syscall_number, uint64_t arg1, uint64_t arg2, uint64_t arg3){

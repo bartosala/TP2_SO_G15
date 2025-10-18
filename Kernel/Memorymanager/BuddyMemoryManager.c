@@ -1,6 +1,7 @@
+#ifdef BUDDY
 #include <stdio.h>
 #include <stdint.h>
-#include <memoryManager.h>
+#include "memoryManager.h"
 #include <defs.h>
 #include <string.h>
 
@@ -181,3 +182,5 @@ static void releaseNode(uint64_t node) {
         }
     }
 }
+
+#endif

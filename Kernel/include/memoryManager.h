@@ -5,7 +5,6 @@
 
 typedef struct MemoryManagerCDT *MemoryManagerADT;
 
-
 void createMemoryManager(void *startAddress, size_t memorySize);
 
 void *allocMemory(const size_t memoryToAllocate);

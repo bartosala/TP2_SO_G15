@@ -8,7 +8,7 @@
 #include <videoDriver.h>
 #include <textModule.h>
 #include <keyboardDriver.h>
-#include <memoryManager.h>
+#include "memoryManager.h"
 #include <defs.h>
 
 #define WHITE 0x00FFFFFF
@@ -70,7 +70,7 @@ int main()
 	printStr(" TPE ARQUI \n", WHITE);
 	fontSizeDown(2);
 
-	createMemoryManager(HEAP_ADDRESS, HEAP_SIZE);
+	createMemoryManager((void*)HEAP_ADDRESS, HEAP_SIZE);
 	clear_buffer();
 	
 	((EntryPoint)sampleCodeModuleAddress)(); // Llamada al userland

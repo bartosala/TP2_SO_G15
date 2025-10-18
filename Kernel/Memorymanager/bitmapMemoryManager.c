@@ -1,4 +1,5 @@
-#include <memoryManager.h>
+#ifdef BITMAP
+#include "memoryManager.h"
 #include <defs.h>
 #include <stdint.h>
 
@@ -17,11 +18,11 @@ typedef struct MemoryManagerCDT {
 static void *startingAddress;
 MemoryManagerCDT memoryManager;
 
-static sizeToBlockQty(uint32_t size);
+static uint32_t sizeToBlockQty(uint32_t size);
 static void *markGroupAsUsed(uint32_t blocksNeeded, uint32_t index);
 static uintptr_t findFreeBlocks(uint32_t blocksNeeded, uint32_t start, uint32_t end);
 
-static sizeToBlockQty(uint32_t size){
+static uint32_t sizeToBlockQty(uint32_t size){
 	return (size == 0) ? 0 : (size - 1) / BLOCK_SIZE + 1;
 }
 
@@ -65,10 +66,10 @@ static void *markGroupAsUsed(uint32_t blocksNeeded, uint32_t index) {
     return (void *)((char *)memoryManager.start + index * BLOCK_SIZE);
 }
 
-void createMemoryManager(void *start, uint32_t size) {
+void createMemoryManager(void *start, size_t size) {
     startingAddress = start;
 	MemoryManagerADT memoryManager = (MemoryManagerADT)startingAddress;
-	uint32_t totalMemory = size;
+	size_t totalMemory = size;
 	memoryManager->blockQty = totalMemory / BLOCK_SIZE;
 
 	memoryManager->bitmap = startingAddress;
@@ -148,3 +149,5 @@ void freeMemory(void *address) {
     
     return;
 }
+
+#endif
