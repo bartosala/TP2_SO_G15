@@ -20,9 +20,9 @@ EXTERN irqDispatcher
 EXTERN exceptionDispatcher
 EXTERN syscallDispatcher
 EXTERN getRegisters
-
 EXTERN timer_handler
 EXTERN bufferWrite
+EXTERN schedule
 
 SECTION .text
 
@@ -69,6 +69,11 @@ SECTION .text
 	mov [rsp_aux], rsp
 	mov rdi, %1 ; pasaje de parametro
 	call irqDispatcher
+
+	mov al, 20h
+	out 20h, al ; EOI
+
+
 	popState
 	iretq
 %endmacro
@@ -83,6 +88,11 @@ SECTION .text
 
 	popState
 	iretq
+%endmacro
+
+%macro EOI 0
+	mov al, 20h
+	out 20h, al ; EOI
 %endmacro
 
 _hlt:
@@ -117,16 +127,15 @@ picSlaveMask:
 
 
 ;8254 Timer (Timer Tick)
-_irq00Handler:
+_irq00Handler: ; interesting_handler de la práctica
 	pushState
 	call timer_handler
 
-	;mov rdi, rsp
-	;call schedule ;
-	;mov rsp, rax 
+	mov rdi, rsp
+	call schedule ; Llama al scheduler
+	mov rsp, rax 
 
-	mov al, 20h
-	out 20h, al ; EOI
+	EOI
 
 	popState
 	iretq
@@ -137,8 +146,7 @@ _irq01Handler:
 
 	call bufferWrite
 
-	mov al, 20h
-	out 20h, al ; EOI
+	EOI
 
 	popState
 	iretq

@@ -1,3 +1,5 @@
+/*
+
 #include <time.h>
 #include <stdint.h>
 #include <naiveConsole.h>
@@ -28,3 +30,4 @@ void int_20(){
 void int_21(){
 	bufferWrite();
 }
+*/
