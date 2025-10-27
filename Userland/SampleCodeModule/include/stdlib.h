@@ -17,7 +17,7 @@ uint64_t strlen(char * s);
  * @param ... argumentos a imprimir
  * @return cantidad de caracteres impresos
  */
-uint64_t printf(const char *format, ...);
+int printf(const char *format, ...);
 
 /**
  * @brief Imprime en pantalla un string formateado de error
@@ -25,7 +25,7 @@ uint64_t printf(const char *format, ...);
  * @param ... argumentos a imprimir
  * @return cantidad de caracteres impresos
  */
-uint64_t printferror(const char *format, ...);
+int printferror(const char *format, ...);
 
 /**
  * @brief Lee de la entrada estandar un string

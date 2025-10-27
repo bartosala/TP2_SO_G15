@@ -1,8 +1,8 @@
 #include <textModule.h>
-#include <keyboardDriver.h>
+#include "../include/keyboardDriver.h"
 #include <stdint.h>
-#include <interrupts.h>
-#include <lib.h>
+#include "../include/interrupts.h"
+#include "../include/lib.h"
 
 #define RED 0x00FF0000
 #define CANT_REGS 19

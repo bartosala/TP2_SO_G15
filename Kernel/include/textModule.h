@@ -11,6 +11,8 @@ void lineFeed(int fontHeight);
 
 void printStr(char * s, uint32_t color);
 
+void printInt(uint64_t value, uint32_t color);
+
 void clearText(uint32_t color);
 
 uint64_t fontSizeUp(uint64_t increase);

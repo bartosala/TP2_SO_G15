@@ -12,7 +12,7 @@
 
 
 #define CANT_REGS 19
-#define CANT_SYSCALLS 12
+#define CANT_SYSCALLS 32
 
 extern uint64_t regs[CANT_REGS];
 
@@ -86,29 +86,7 @@ static uint64_t syscall_wait(uint64_t ticks){
 }
 
 
-static uint64_t syscall_create_process(char *name, uint64_t argc, char *argv[]){
-    return 0; // 
-}
-
-static uint64_t syscall_exit(){
-    return 0;
-}
-
-static uint64_t syscall_getpid(){
-    return 0; 
-}
-
-static uint64_t syscall_kill(uint64_t pid){
-    return 0; 
-}
-
-static uint64_t syscall_block(uint64_t pid){
-    return 0; 
-}
-
-static uint64_t syscall_unblock(uint64_t pid){
-    return 0; 
-}
+// process/syscall wrappers will be provided below via scheduler API
 
 static uint64_t syscall_allocMemory(uint64_t size) {
     return (uint64_t)allocMemory(size);
@@ -116,6 +94,62 @@ static uint64_t syscall_allocMemory(uint64_t size) {
 
 static uint64_t syscall_freeMemory(uint64_t address) {
     freeMemory((void*)address);
+    return 0;
+}
+
+#include "../include/scheduler.h"
+
+static uint64_t syscall_create_process(char *name, uint64_t argc, char *argv[]){
+    // we don't have a direct entryPoint resolver by name yet; pass NULL
+    return (uint64_t)Sched_createProcess((Code)0, name, argc, argv, 0);
+}
+
+static uint64_t syscall_exit(uint64_t code){
+    // mark current process as zombie via scheduler and return
+    // we don't have an immediate exit wrapper, scheduler will free on next tick
+    // For now, set exit code and mark state
+    SchedulerADT s = getScheduler();
+    if (s && s->current) {
+        s->current->exitCode = (uint16_t)code;
+        s->current->state = 4; // ZOMBIE
+    }
+    return 0;
+}
+
+static uint64_t syscall_getpid(){
+    return Sched_getPid();
+}
+
+static uint64_t syscall_kill(uint64_t pid){
+    return (uint64_t)Sched_killProcess((uint16_t)pid);
+}
+
+static uint64_t syscall_block(uint64_t pid){
+    return (uint64_t)Sched_blockProcess((uint16_t)pid);
+}
+
+static uint64_t syscall_unblock(uint64_t pid){
+    return (uint64_t)Sched_unblockProcess((uint16_t)pid);
+}
+
+static uint64_t syscall_yield(uint64_t a, uint64_t b, uint64_t c){
+    (void)a;(void)b;(void)c;
+    return (uint64_t)Sched_yield();
+}
+
+static uint64_t syscall_wait_children(uint64_t a, uint64_t b, uint64_t c){
+    (void)a;(void)b;(void)c;
+    return (uint64_t)Sched_waitChildren();
+}
+
+static uint64_t syscall_set_priority(uint64_t pid, uint64_t newPrio, uint64_t c){
+    (void)c;
+    return (uint64_t)Sched_setPriority((uint16_t)pid, (uint8_t)newPrio);
+}
+
+static uint64_t syscall_list_processes(uint64_t a, uint64_t b, uint64_t c){
+    (void)a;(void)b;(void)c;
+    Sched_listProcesses();
     return 0;
 }
 
@@ -135,13 +169,16 @@ uint64_t syscallDispatcher(uint64_t syscall_number, uint64_t arg1, uint64_t arg2
                  (syscall_fn)syscall_wait,
                   (syscall_fn)syscall_allocMemory,
                    (syscall_fn)syscall_freeMemory
-                    // (syscall_fn)syscall_create_process,
-                     // (syscall_fn)syscall_exit,
-                      // (syscall_fn)syscall_getpid,
-                       // (syscall_fn)syscall_kill,
-                        // (syscall_fn)syscall_block,
-                         // (syscall_fn)syscall_unblock
-                
+                    ,(syscall_fn)syscall_create_process,
+                    (syscall_fn)syscall_exit,
+                    (syscall_fn)syscall_getpid,
+                    (syscall_fn)syscall_kill,
+                    (syscall_fn)syscall_block,
+                    (syscall_fn)syscall_unblock,
+                    (syscall_fn)syscall_yield,
+                    (syscall_fn)syscall_wait_children,
+                    (syscall_fn)syscall_set_priority,
+                    (syscall_fn)syscall_list_processes
                 };
     return syscalls[syscall_number](arg1, arg2, arg3);
 }

@@ -7,7 +7,7 @@ typedef enum {
     READY,
     RUNNING,
     BLOCKED,
-    TERMINATRED
+    TERMINATED
 } State;
 
 typedef struct Registers {

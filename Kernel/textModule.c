@@ -225,6 +225,25 @@ void printStr(char * s, uint32_t color){
     }
 }
 
+void printInt(uint64_t value, uint32_t color){
+    char buf[24]; // enough for 64-bit decimal + sign
+    int i = 0;
+    if (value == 0){
+        buf[i++] = '0';
+    } else {
+        uint64_t v = value;
+        char rev[24];
+        int j = 0;
+        while (v > 0 && j < (int)sizeof(rev)){
+            rev[j++] = '0' + (v % 10);
+            v /= 10;
+        }
+        while (j > 0) buf[i++] = rev[--j];
+    }
+    buf[i] = '\0';
+    printStr(buf, color);
+}
+
 #define TOPE_FONT 5
 
 uint64_t fontSizeUp(uint64_t increase){
