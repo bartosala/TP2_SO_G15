@@ -98,7 +98,7 @@ uint64_t syscall_getpid() {
 }
 
 uint64_t syscall_kill(uint64_t pid) {
-    return syscall(KILL, pid, 0, 0);
+    return syscall(KILL, pid, 0, 0); // se usa esta eb el test 
 }
 
 uint64_t syscall_block(uint64_t pid) {
