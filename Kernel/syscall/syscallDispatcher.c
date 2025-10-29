@@ -10,6 +10,7 @@
 #include "memoryManager.h"
 #include <defs.h>
 #include <scheduler.h>
+#include <textModule.h>
 
 
 #define CANT_REGS 19
@@ -86,6 +87,12 @@ static uint64_t syscall_wait(uint64_t ticks){
     return ticks;
 }
 
+static uint64_t syscall_toggle_cursor(uint64_t a, uint64_t b, uint64_t c){
+    (void)a;(void)b;(void)c;
+    // Placeholder for toggle cursor functionality
+    return 0;
+}
+
 
 // process/syscall wrappers will be provided below via scheduler API
 
@@ -156,28 +163,31 @@ static uint64_t syscall_list_processes(uint64_t a, uint64_t b, uint64_t c){
 uint64_t syscallDispatcher(uint64_t syscall_number, uint64_t arg1, uint64_t arg2, uint64_t arg3){
     if(syscall_number > CANT_SYSCALLS) return 0;
     syscall_fn syscalls[] = {0,
-        (syscall_fn)syscall_read, (syscall_fn)syscall_write,
-         (syscall_fn)syscall_time, (syscall_fn)syscall_beep,
-          (syscall_fn)syscall_drawRectangle,
-           (syscall_fn)syscall_getRegisters,
-            (syscall_fn)syscall_clearScreen,
-             (syscall_fn)syscall_fontSizeUp,
-              (syscall_fn)syscall_fontSizeDown,
-               (syscall_fn)syscall_getHeight,
-                (syscall_fn)syscall_getWidth,
-                 (syscall_fn)syscall_wait,
-                  (syscall_fn)syscall_allocMemory,
-                   (syscall_fn)syscall_freeMemory
-                    ,(syscall_fn)syscall_create_process,
-                    (syscall_fn)syscall_exit,
-                    (syscall_fn)syscall_getpid,
-                    (syscall_fn)syscall_kill,
-                    (syscall_fn)syscall_block,
-                    (syscall_fn)syscall_unblock,
-                    (syscall_fn)syscall_yield,
-                    (syscall_fn)syscall_wait_children,
-                    (syscall_fn)syscall_set_priority,
-                    (syscall_fn)syscall_list_processes
-                };
+        (syscall_fn)syscall_read,            // 1
+        (syscall_fn)syscall_write,           // 2
+        (syscall_fn)syscall_time,            // 3
+        (syscall_fn)syscall_beep,            // 4
+        (syscall_fn)syscall_drawRectangle,   // 5
+        (syscall_fn)syscall_getRegisters,    // 6
+        (syscall_fn)syscall_clearScreen,     // 7
+        (syscall_fn)syscall_fontSizeUp,      // 8
+        (syscall_fn)syscall_fontSizeDown,    // 9
+        (syscall_fn)syscall_getHeight,       // 10
+        (syscall_fn)syscall_getWidth,        // 11
+        (syscall_fn)syscall_wait,            // 12
+        (syscall_fn)syscall_toggle_cursor,   // 13
+        (syscall_fn)syscall_allocMemory,     // 14
+        (syscall_fn)syscall_freeMemory,      // 15
+        (syscall_fn)syscall_create_process,  // 16
+        (syscall_fn)syscall_exit,            // 17
+        (syscall_fn)syscall_getpid,          // 18
+        (syscall_fn)syscall_kill,            // 19
+        (syscall_fn)syscall_block,           // 20
+        (syscall_fn)syscall_unblock,         // 21
+        (syscall_fn)syscall_yield,           // 22
+        (syscall_fn)syscall_wait_children,   // 23
+        (syscall_fn)syscall_set_priority,    // 24
+        (syscall_fn)syscall_list_processes   // 25
+    };
     return syscalls[syscall_number](arg1, arg2, arg3);
 }

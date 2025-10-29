@@ -78,4 +78,17 @@ char getChar();
  */
 unsigned int randInt();
 
+/**
+ * @brief Allocates memory
+ * @param size Size in bytes to allocate
+ * @return Pointer to allocated memory or NULL on failure
+ */
+void *malloc(uint64_t size);
+
+/**
+ * @brief Frees previously allocated memory
+ * @param ptr Pointer to memory to free
+ */
+void free(void *ptr);
+
 #endif // STDLIB_H

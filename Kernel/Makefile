@@ -1,7 +1,15 @@
 include Makefile.inc
 
 KERNEL=kernel.bin
-SOURCES=$(wildcard *.c) $(wildcard Memorymanager/*.c) $(wildcard interruptions/*.c) $(wildcard drivers/*.c) $(wildcard processes/*.c) $(wildcard semaphores/*.c) $(wildcard syscall/*.c)
+
+# Filter memory manager source based on MM flag
+ifeq ($(MM),BUDDY)
+    MM_SOURCE=Memorymanager/BuddyMemoryManager.c
+else
+    MM_SOURCE=Memorymanager/bitmapMemoryManager.c
+endif
+
+SOURCES=$(wildcard *.c) $(MM_SOURCE) $(wildcard interruptions/*.c) $(wildcard drivers/*.c) $(wildcard processes/*.c) $(wildcard semaphores/*.c) $(wildcard syscall/*.c)
 SOURCES_ASM=$(wildcard asm/*.asm)
 OBJECTS=$(SOURCES:.c=.o)
 OBJECTS_ASM=$(SOURCES_ASM:.asm=.o)

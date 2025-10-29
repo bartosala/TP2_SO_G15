@@ -65,12 +65,12 @@ void printSlow(char * str, uint32_t color, uint64_t pause){
 int main()
 {	
 	load_idt();
-	setup_timer(18);
 	fontSizeUp(2);
 	printStr(" TPE ARQUI \n", WHITE);
 	fontSizeDown(2);
 
-	createMemoryManager((void*)HEAP_ADDRESS, HEAP_SIZE);
+	createMemoryManager((void*)MEMORY_MANAGER_ADDRESS, HEAP_SIZE);
+	setup_timer(18);
 	clear_buffer();
 	
 	((EntryPoint)sampleCodeModuleAddress)(); // Llamada al userland

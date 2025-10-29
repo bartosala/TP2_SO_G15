@@ -1,5 +1,6 @@
 #include <syscall.h>
 #include <stdint.h>
+#include <stdlib.h>
    
 /*
  * @brief Realiza una interrupción 0x80 (SYSCALL)
