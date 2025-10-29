@@ -65,6 +65,5 @@ uint64_t test_mm(uint64_t argc, char *argv[]) {
       if (mm_rqs[i].address)
         free(mm_rqs[i].address);
   }
-  printf("\ntest_mm: finished successfully\n");
-  return 0;
+  printf("test_mm OK\n");
 }

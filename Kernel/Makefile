@@ -18,8 +18,7 @@ $(KERNEL): $(LOADEROBJECT) $(OBJECTS) $(STATICLIBS) $(OBJECTS_ASM)
 
 
 %.o: %.c
-	$(GCC) $(GCCFLAGS) -DBUDDY -I./include -c $< -o $@
-#	$(GCC) $(GCCFLAGS) -DBITMAP -I./include -c $< -o $@
+	$(GCC) $(GCCFLAGS) $(MM:%=-D%) -I./include -c $< -o $@
 
 %.o : %.asm
 	$(ASM) $(ASMFLAGS) $< -o $@

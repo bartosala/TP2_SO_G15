@@ -9,6 +9,7 @@
 #include <stdarg.h>
 #include "memoryManager.h"
 #include <defs.h>
+#include <scheduler.h>
 
 
 #define CANT_REGS 19
@@ -96,8 +97,6 @@ static uint64_t syscall_freeMemory(uint64_t address) {
     freeMemory((void*)address);
     return 0;
 }
-
-#include "../include/scheduler.h"
 
 static uint64_t syscall_create_process(char *name, uint64_t argc, char *argv[]){
     // we don't have a direct entryPoint resolver by name yet; pass NULL
