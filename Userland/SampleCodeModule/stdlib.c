@@ -7,6 +7,7 @@
 #define MAX_INT_LENGTH 10
 #define STDOUT 1
 #define STDERR 2
+#define NULL ((void*)0)
 
 // extracted from naiveConsole.c
 static uint32_t uintToBase(uint64_t value, char * buffer, uint32_t base)
@@ -169,4 +170,18 @@ unsigned long int next = 1;
 unsigned int randInt(){
     next = next * 1103515245 + 12345;
     return (next/65536) % 32768;
+}
+// Usando nuestras syscalls de alloc/free
+void * malloc(uint64_t size) {
+    if (size == 0) return NULL;
+    void *ptr = syscall_allocMemory(size);
+    if (ptr == NULL) {
+        printferror("Error allocating memory of size %llu\n", size); // ARREGLAR PRINTFERROR
+    }
+    return ptr;
+}
+
+void free(void *ptr) {
+    if (ptr == NULL) return;
+    syscall_freeMemory((uint64_t)ptr);
 }

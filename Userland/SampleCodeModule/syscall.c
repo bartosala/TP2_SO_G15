@@ -84,9 +84,10 @@ void *syscall_allocMemory(uint64_t size) {
     return (void *)syscall(ALLOC_MEMORY, size, 0, 0);
 }
 
-void syscall_freeMemory(void *address) {
-    syscall(FREE_MEMORY, (uint64_t)address, 0, 0);
+int syscall_freeMemory(void *address) {
+    return syscall(FREE_MEMORY, (uint64_t)address, 0, 0);
 }
+
 
 uint64_t syscall_create_process(char *name, uint64_t argc, char *argv[]) {
     return syscall(CREATE_PROCESS, (uint64_t)name, argc, (uint64_t)argv);

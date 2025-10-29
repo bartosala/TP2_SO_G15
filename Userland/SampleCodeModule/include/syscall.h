@@ -20,6 +20,11 @@ uint64_t syscall_getHeight();
 uint64_t syscall_getWidth();
 uint64_t syscall_wait(uint64_t ticks);
 
+// syscalls de memoria: 
+
+void *syscall_allocMemory(uint64_t size);
+int syscall_freeMemory(void *address);
+
 int64_t my_getpid();
 int64_t my_create_process(char *name, uint64_t argc, char *argv[]);
 int64_t my_nice(uint64_t pid, uint64_t newPrio);
