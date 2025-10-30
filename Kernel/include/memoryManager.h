@@ -3,6 +3,8 @@
 
 #include <stdlib.h>
 
+#define BLOCK_SIZE 64 // Tamaño de bloque en bytes
+
 typedef struct MemoryManagerCDT *MemoryManagerADT;
 
 void createMemoryManager(void *startAddress, size_t memorySize);

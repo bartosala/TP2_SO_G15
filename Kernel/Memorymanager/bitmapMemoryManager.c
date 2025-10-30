@@ -3,8 +3,6 @@
 #include <defs.h>
 #include <stdint.h>
 
-#define BLOCK_SIZE 64 // Bloques de 64 bytes
-
 enum { FREE, USED, START_BOUNDARY, END_BOUNDARY, SINGLE_BLOCK };
 
 typedef struct MemoryManagerCDT {
@@ -66,11 +64,12 @@ static void *markGroupAsUsed(uint32_t blocksNeeded, uint32_t index) {
     return (void *)((char *)memoryManager.start + index * BLOCK_SIZE);
 }
 
-void createMemoryManager(void *start, size_t size) {
+void createMemoryManager(void *start, size_t size) { // Podria ser sin parametros esta todo en defs
     startingAddress = start;
 	MemoryManagerADT memoryManager = (MemoryManagerADT)startingAddress;
 	size_t totalMemory = size;
-	memoryManager->blockQty = totalMemory / BLOCK_SIZE;
+	memoryManager->blockQty = totalMemory / BLOCK_SIZE; // ESTO DA 0 !!!
+    int d = memoryManager->blockQty;
 
 	memoryManager->bitmap = startingAddress;
     memoryManager->start = startingAddress;
@@ -88,10 +87,14 @@ void createMemoryManager(void *start, size_t size) {
 
 void *allocMemory(const size_t memoryToAllocate) {
     uint32_t blocksNeeded = sizeToBlockQty(memoryToAllocate);
+    // el probelma es que blockqty es 0 
+    int d = memoryManager.blockQty;
+    if (blocksNeeded == 0 /*|| blocksNeeded > memoryManager.blockQty - memoryManager.blocksUsed */) {
+        return NULL; // DEVUELVE ESTE NULL POR LA SEGUNDA PROP, DA 1 > 0 !!! 
     
-    if (blocksNeeded == 0 || blocksNeeded > memoryManager.blockQty - memoryManager.blocksUsed) {
-        return NULL;
     }
+    
+    
    
     uintptr_t initialBlockAddress = findFreeBlocks(
         blocksNeeded, memoryManager.current, memoryManager.blockQty);
@@ -102,7 +105,7 @@ void *allocMemory(const size_t memoryToAllocate) {
     }
     
     if (initialBlockAddress == 0) {
-        return NULL;
+        return NULL; // ESTO TAMBIE DA NULL !!!! ESOS SON LOS PROBLEMAS CON EL BITMAP
     }
     
     uint32_t blockIndex = (initialBlockAddress - (uintptr_t)memoryManager.start) / BLOCK_SIZE;

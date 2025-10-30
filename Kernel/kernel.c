@@ -69,7 +69,7 @@ int main()
 	printStr(" TPE ARQUI \n", WHITE);
 	fontSizeDown(2);
 
-	createMemoryManager((void*)MEMORY_MANAGER_ADDRESS, HEAP_SIZE);
+	createMemoryManager((void*)HEAP_START_ADDRESS, HEAP_SIZE);
 	setup_timer(18);
 	clear_buffer();
 	

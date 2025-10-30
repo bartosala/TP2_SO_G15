@@ -112,7 +112,8 @@ void *allocMemory(const size_t memoryToAllocate) {
     printStr("After marking: node ", 0x00FFFF00);
     printInt(node, 0x00FFFF00);
     printStr(" state=", 0x00FFFF00);
-    printInt(memoryManager->tree[node].use, 0x00FFFF00);
+    printInt(memoryManager->tree[node].use, 0x00FFFF00); // Aca se podira imprimir USED en vez de 2 , osea el estado en palabras. Igual creo
+                                                            // que ni hace falta poner nada 
     printStr("\n", 0x00FFFF00);
     
     setSplit(node);
