@@ -24,7 +24,7 @@ typedef struct Process { // PCB
 	DoubleLinkedListADT children;
 
 	// state
-	uint8_t state; // 0 = NEW, 1 = READY, 2 = RUNNING, 3 = BLOCKED, 4 = ZOMBIE
+	uint8_t state; // 0 = BLOCKED, 1 = READY, 2 = RUNNING, 3 = DEAD, 4 = ZOMBIE
 	uint8_t foreground; // boolean: foreground/background
 	uint16_t exitCode;
 	uint16_t childrenCount;
