@@ -1,9 +1,11 @@
 #include "../include/double_linked_list.h"
 #include "../include/memoryManager.h"
 #include <stddef.h>
+#include <stdint.h>
 
 DoubleLinkedListADT createDoubleLinkedList() {
-    DoubleLinkedListADT list = (DoubleLinkedListADT)allocMemory(sizeof(DoubleLinkedListCDT));
+    void *mem = allocMemory(sizeof(DoubleLinkedListCDT));
+    DoubleLinkedListADT list = (DoubleLinkedListADT)mem;
     if (!list) return NULL;
     list->first = NULL;
     list->last = NULL;
@@ -12,7 +14,8 @@ DoubleLinkedListADT createDoubleLinkedList() {
 }
 
 static Node *createNode(void *data) {
-    Node *n = (Node*)allocMemory(sizeof(Node));
+    void *mem = allocMemory(sizeof(Node));
+    Node *n = (Node*)mem;
     if (!n) return NULL;
     n->data = data;
     n->next = NULL;

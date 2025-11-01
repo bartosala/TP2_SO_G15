@@ -30,6 +30,10 @@ typedef struct MemoryManagerCDT {
 
 static MemoryManagerADT memoryManager = NULL;
 
+static MemoryManagerADT getMemoryManager() {
+    return memoryManager;
+}
+
 static uint64_t getNode(uint8_t exponent);
 static int64_t lookFreeNode(uint8_t exponent);
 static uint8_t *address(uint64_t node, uint8_t exponent);
@@ -39,83 +43,47 @@ static void setSplit(uint64_t node);
 static void releaseNode(uint64_t node);
 static int isAllocatable(uint64_t node);
 
-void createMemoryManager(void *startAddress, size_t memorySize) {
-    memoryManager = startAddress;
-    
-    printStr("Creating memory manager at: 0x", 0x00FFFFFF);
-    printInt((uint64_t)startAddress, 0x00FFFFFF);
-    printStr("\n", 0x00FFFFFF);
+void createMemoryManager(void *start, uint64_t size) {
+    memoryManager = start;
 
-    if (memorySize < MIN_ALLOC) {
-        printStr("Tamaño de memoria insuficiente\n", 0x00FF0000);
+    if (size < MIN_ALLOC) {
         return;
     }
 
-    memoryManager->firstAddress = startAddress + sizeof(MemoryManagerCDT);
-    memoryManager->tree = (Node *)(memoryManager->firstAddress + HEAP_SIZE);
-
-    memoryManager->totalMemory = HEAP_SIZE;
-    memoryManager->usedMemory = 0;
-
-    printStr("Heap starts at: 0x", 0x00FFFFFF);
-    printInt((uint64_t)memoryManager->firstAddress, 0x00FFFFFF);
-    printStr("\nTree starts at: 0x", 0x00FFFFFF);
-    printInt((uint64_t)memoryManager->tree, 0x00FFFFFF);
-    printStr("\nTotal memory: ", 0x00FFFFFF);
-    printInt(memoryManager->totalMemory, 0x00FFFFFF);
-    printStr(" bytes\n", 0x00FFFFFF);
+    // Place the tree right after the MemoryManagerCDT structure
+    memoryManager->tree = (Node *)((uint8_t *)start + sizeof(MemoryManagerCDT));
     
-    memset(memoryManager->tree, 0, NODES * sizeof(Node));
-    printStr("Memory manager initialized!\n", 0x00FFFFFF);
+    // The heap starts after the tree
+    memoryManager->firstAddress = (uint8_t *)memoryManager->tree + (NODES * sizeof(Node));
+    
+    // Available memory is reduced by structure and tree overhead
+    uint64_t overhead = (uint64_t)memoryManager->firstAddress - (uint64_t)start;
+    memoryManager->totalMemory = size - overhead;
+    memoryManager->usedMemory = 0;
+    
+    // CRITICAL: Initialize all tree nodes to FREE
+    for (uint64_t i = 0; i < NODES; i++) {
+        memoryManager->tree[i].use = FREE;
+    }
 }
 
-void *allocMemory(const size_t memoryToAllocate) {
-    if (memoryManager == NULL || memoryToAllocate == 0) {
-        printStr("ERROR: manager NULL or size 0\n", 0x00FF0000);
+void *allocMemory(uint64_t size) {
+    MemoryManagerADT memoryManager = getMemoryManager();
+    if (size > memoryManager->totalMemory || size == 0) {
         return NULL;
     }
 
-    if (memoryToAllocate > memoryManager->totalMemory) {
-        printStr("ERROR: Requested size exceeds total memory\n", 0x00FF0000);
-        return NULL;
-    }
-
-    // Don't add +1 - metadata is stored INSIDE the block
-    uint8_t exponent = getExponent(memoryToAllocate);
+    uint8_t exponent = getExponent(size);
     if (exponent > MAX_EXPONENT) {
-        printStr("ERROR: Exponent too large: ", 0x00FF0000);
-        printInt(exponent, 0x00FF0000);
-        printStr("\n", 0x00FF0000);
         return NULL;
     }
 
     int64_t node = lookFreeNode(exponent);
     if (node == -1) {
-        printStr("ERROR: No free node for size ", 0x00FF0000);
-        printInt(memoryToAllocate, 0x00FF0000);
-        printStr(" (exponent: ", 0x00FF0000);
-        printInt(exponent, 0x00FF0000);
-        printStr(", used: ", 0x00FF0000);
-        printInt(memoryManager->usedMemory, 0x00FF0000);
-        printStr(")\n", 0x00FF0000);
         return NULL;
     }
 
-    printStr("Before marking: node ", 0x00FFFF00);
-    printInt(node, 0x00FFFF00);
-    printStr(" state=", 0x00FFFF00);
-    printInt(memoryManager->tree[node].use, 0x00FFFF00);
-    printStr("\n", 0x00FFFF00);
-
     memoryManager->tree[node].use = USED;
-    
-    printStr("After marking: node ", 0x00FFFF00);
-    printInt(node, 0x00FFFF00);
-    printStr(" state=", 0x00FFFF00);
-    printInt(memoryManager->tree[node].use, 0x00FFFF00); // Aca se podira imprimir USED en vez de 2 , osea el estado en palabras. Igual creo
-                                                            // que ni hace falta poner nada 
-    printStr("\n", 0x00FFFF00);
-    
     setSplit(node);
 
     memoryManager->usedMemory += POW_TWO(exponent);
@@ -123,40 +91,25 @@ void *allocMemory(const size_t memoryToAllocate) {
     uint8_t *block = address(node, exponent);
     block[0] = exponent;
     
-    printStr("Allocated: size=", 0x0000FF00);
-    printInt(memoryToAllocate, 0x0000FF00);
-    printStr(", block=0x", 0x0000FF00);
-    printInt((uint64_t)(block + 1), 0x0000FF00);
-    printStr(", used=", 0x0000FF00);
-    printInt(memoryManager->usedMemory, 0x0000FF00);
-    printStr("\n", 0x0000FF00);
-    
     return (void *)(block + 1);
 }
 
-void freeMemory(void *address) {
-    if (memoryManager == NULL || address == NULL) {
-        printStr("Free: NULL pointer\n", 0x00FFFF00);
+void freeMemory(void *ptr) {
+    MemoryManagerADT memoryManager = getMemoryManager();
+    if (ptr == NULL) {
         return;
     }
-    
-    uint8_t *real_ptr = (uint8_t *)address - 1;
+    uint8_t *real_ptr = (uint8_t *)ptr - 1;
     uint8_t exponent = real_ptr[0];
-    uint64_t node = searchNode(real_ptr, &exponent);
+    uint8_t *block = real_ptr;
+    uint64_t node = searchNode(block, &exponent);
 
     if (memoryManager->tree[node].use != USED) {
-        printStr("Free: block not marked as USED\n", 0x00FF0000);
         return;
     }
     
     releaseNode(node);
     memoryManager->usedMemory -= POW_TWO(exponent);
-    
-    printStr("Freed: addr=0x", 0x00FFFF00);
-    printInt((uint64_t)address, 0x00FFFF00);
-    printStr(", used=", 0x00FFFF00);
-    printInt(memoryManager->usedMemory, 0x00FFFF00);
-    printStr("\n", 0x00FFFF00);
 }
 
 
@@ -165,11 +118,12 @@ static inline uint64_t getNode(uint8_t exponent) {
 }
 
 static uint8_t *address(uint64_t node, uint8_t exponent) {
-    // Match reference implementation exactly
+    MemoryManagerADT memoryManager = getMemoryManager();
     return memoryManager->firstAddress + ((node - getNode(exponent)) << exponent);
 }
 
 static int64_t searchNode(uint8_t *ptr, uint8_t *exponent) {
+    MemoryManagerADT memoryManager = getMemoryManager();
     uint64_t node = ((ptr - memoryManager->firstAddress) >> *exponent) + getNode(*exponent);
     return node;
 }
@@ -185,7 +139,7 @@ static uint8_t getExponent(uint64_t request) {
 }
 
 static int isAllocatable(uint64_t node) {
-    // Match reference: check if node.use == 0
+    MemoryManagerADT memoryManager = getMemoryManager();
     if (memoryManager->tree[node].use != 0) {
         return 0;
     }
@@ -214,15 +168,17 @@ static int64_t lookFreeNode(uint8_t exponent) {
 }
 
 static void setSplit(uint64_t node) {
+    MemoryManagerADT memoryManager = getMemoryManager();
     while (node != 0) {
         node = ((node - 1) >> 1);
-        if (memoryManager->tree[node].use == 0) {  // Use 0 instead of FREE
+        if (memoryManager->tree[node].use == 0) {
             memoryManager->tree[node].use = SPLIT;
         } else {
             break;
         }
     }
 }static void releaseNode(uint64_t node) {
+    MemoryManagerADT memoryManager = getMemoryManager();
     memoryManager->tree[node].use = 0;
 
     if (node == 0) {
@@ -241,6 +197,16 @@ static void setSplit(uint64_t node) {
             break;
         }
     }
+}
+
+int getUsedMemory() {
+    MemoryManagerADT memoryManager = getMemoryManager();
+    return memoryManager->usedMemory; 
+}
+
+int getFreeMemory() {
+    MemoryManagerADT memoryManager = getMemoryManager();
+    return memoryManager->totalMemory - memoryManager->usedMemory;
 }
 
 #endif

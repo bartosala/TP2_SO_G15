@@ -2,17 +2,18 @@
 #define MEMORY_MANAGER_H
 
 #include <stdlib.h>
+#include <stdint.h>
 
 #define BLOCK_SIZE 64 // Tamaño de bloque en bytes
 
 typedef struct MemoryManagerCDT *MemoryManagerADT;
 
-void createMemoryManager(void *startAddress, size_t memorySize);
+void createMemoryManager(void *start, uint64_t size);
 
-void *allocMemory(const size_t memoryToAllocate);
-
+void *allocMemory(uint64_t size);
 void freeMemory(void *address);
-
+int getUsedMemory(void);
+int getFreeMemory(void);
 
 
 #endif

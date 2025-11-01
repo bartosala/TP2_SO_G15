@@ -176,7 +176,7 @@ void * malloc(uint64_t size) {
     if (size == 0) return NULL;
     void *ptr = syscall_allocMemory(size);
     if (ptr == NULL) {
-        //printferror("Error allocating memory of size %llu\n", size); // ARREGLAR PRINTFERROR
+        printferror("Error allocating memory of size %llu\n", size); // ARREGLAR PRINTFERROR
     }
     return ptr;
 }

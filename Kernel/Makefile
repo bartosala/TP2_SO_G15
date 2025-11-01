@@ -9,7 +9,7 @@ else
     MM_SOURCE=Memorymanager/bitmapMemoryManager.c
 endif
 
-SOURCES=$(wildcard *.c) $(MM_SOURCE) $(wildcard interruptions/*.c) $(wildcard drivers/*.c) $(wildcard processes/*.c) $(wildcard semaphores/*.c) $(wildcard syscall/*.c)
+SOURCES=$(wildcard *.c) $(MM_SOURCE) $(wildcard interruptions/*.c) $(wildcard drivers/*.c) $(wildcard processes/*.c) $(wildcard syscall/*.c) #$(wildcard semaphores/*.c)
 SOURCES_ASM=$(wildcard asm/*.asm)
 OBJECTS=$(SOURCES:.c=.o)
 OBJECTS_ASM=$(SOURCES_ASM:.asm=.o)
