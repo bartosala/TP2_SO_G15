@@ -56,9 +56,9 @@ void createMemoryManager(void *start, uint64_t size) {
     // The heap starts after the tree
     memoryManager->firstAddress = (uint8_t *)memoryManager->tree + (NODES * sizeof(Node));
     
-    // Available memory is reduced by structure and tree overhead
-    uint64_t overhead = (uint64_t)memoryManager->firstAddress - (uint64_t)start;
-    memoryManager->totalMemory = size - overhead;
+    // Buddy allocator manages exactly 2^MAX_EXPONENT bytes
+    // The totalMemory should be the maximum single allocation size
+    memoryManager->totalMemory = MAX_ALLOC;  // 2^28 = 268,435,456 bytes (~256 MB)
     memoryManager->usedMemory = 0;
     
     // CRITICAL: Initialize all tree nodes to FREE
