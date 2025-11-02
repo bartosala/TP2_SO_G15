@@ -1,45 +1,60 @@
-#ifndef _PROCESS_H
-#define _PROCESS_H
+#ifndef PROCESS_H
+#define PROCESS_H
 
 #include <stdint.h>
-#include <double_linked_list.h>
+#include <stdbool.h>
+#include <shared_structs.h>  // defines PCB, pid_t, State
+#include "queue.h"
 
-typedef int (*Code)(int argc, char **args); // Puntero a la función del programa
+#define STACK_SIZE 4096 // una pagina
 
-typedef struct Process { // PCB
-	uint16_t pid;             
-	uint16_t parentPid;
-	Code program;                
-	char **args;                 
-	int argc;
-	char *name;                  
-	uint8_t priority;         
-	int16_t fileDescriptors[15]; 
+typedef struct ProcessManagerCDT *ProcessManagerADT;
 
+/* lifecycle */
+ProcessManagerADT createProcessManager(void);
+void freeProcessLinkedLists(ProcessManagerADT pm);
 
-	void *stackBase; // MemoryBlock
-	void *stackPos;
-    
-	// children processes (double linked list using the ADT)
-	DoubleLinkedListADT children;
+/* basic operations */
+void addProcess(ProcessManagerADT pm, PCB* process);
+void removeFromReady(ProcessManagerADT pm, pid_t pid);
+void removeFromZombie(ProcessManagerADT pm, pid_t pid);
 
-	// state
-	uint8_t state; // 0 = BLOCKED, 1 = READY, 2 = RUNNING, 3 = DEAD, 4 = ZOMBIE
-	uint8_t foreground; // boolean: foreground/background
-	uint16_t exitCode;
-	uint16_t childrenCount;
+/* queue switches / blocking */
+int blockProcessQueue(ProcessManagerADT list, pid_t pid);
+int blockProcessQueueBySem(ProcessManagerADT list, pid_t pid);
+int unblockProcessQueue(ProcessManagerADT list, pid_t pid);
+int unblockProcessQueueBySem(ProcessManagerADT list, pid_t pid);
 
-} Process;
+/* queries */
+PCB* getProcess(ProcessManagerADT pm, pid_t pid);
+PCB* getNextReadyProcess(ProcessManagerADT pm);
+int hasNextReadyProcess(ProcessManagerADT pm);
+PCB* getCurrentProcess(ProcessManagerADT pm);
 
-void initProcess(Process *process, uint16_t pid, uint16_t parentPid, Code program, char **args, char *name, uint8_t priority, int16_t fileDescriptors[]);
-void freeProcess(Process *process);
-void closeFileDescriptors(Process *process);
+void setIdleProcess(ProcessManagerADT pm, PCB* idleProcess);
+void foregroundProcessSet(ProcessManagerADT pm, PCB* process);
+PCB* getIdleProcess(ProcessManagerADT pm);
 
-// Process wrapper called as entry point for new processes. Signature: argc, argv, original entry
-void processWrapper(int argc, char **argv, Code entry);
+uint64_t processCount(ProcessManagerADT pm);
+uint64_t readyProcessCount(ProcessManagerADT pm);
+uint64_t blockedProcessCount(ProcessManagerADT pm);
+uint64_t zombieProcessCount(ProcessManagerADT pm);
 
-// Allocate and copy argv into kernel-managed memory
-char **allocArgv(Process *p, char **argv, int argc);
+PCB* getForegroundProcess(ProcessManagerADT pm);
+bool isCurrentProcessForeground(ProcessManagerADT pm, pid_t pid);
+bool isIdleProcess(ProcessManagerADT pm, pid_t pid);
+bool isForegroundProcess(PCB* process);
 
+/* kill / terminate */
+PCB* killProcess(ProcessManagerADT pm, pid_t pid, uint64_t ret, State state);
 
-#endif
+/* fds helpers */
+int stdintProcess(ProcessManagerADT pm, pid_t pid);
+int stdoutProcess(ProcessManagerADT pm, pid_t pid);
+
+/* enqueue helpers */
+void addToReady(ProcessManagerADT list, PCB* process);
+void addToBlocked(ProcessManagerADT list, PCB* process);
+void addToBlockedBySem(ProcessManagerADT list, PCB* process);
+
+#endif // PROCESS_H

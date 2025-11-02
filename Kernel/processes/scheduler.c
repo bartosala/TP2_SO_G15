@@ -1,327 +1,373 @@
-#include "../include/scheduler.h"
-#include "../include/memoryManager.h"
+#include <scheduler.h>
+#include <defs.h>
+#include <memoryManager.h>
+#include <interrupts.h>
+#include <shared_structs.h>
+#include <processStackFrame.h>
 #include <lib.h>
-#include <string.h>
-#include "../include/textModule.h"
+#include <textModule.h>
+#include <syscall.h>
+#include <pipes.h>
 
-static SchedulerADT scheduler = NULL;
+#define IDLE_PRIORITY 6
+#define MAX_PRIORITY 5
+#define MIN_PRIORITY 
 
-SchedulerADT getScheduler() {
-    return scheduler;
+#define SHELL_PID 1
+
+#define TIME_QUANTUM 3
+
+
+static ProcessManagerADT processManager = NULL;
+static pid_t currentPid = -1;
+static pid_t nextPid = 0;
+static uint64_t time_quantum = 0;
+
+void startSchedueler(fnptr idle) {
+    createPipeManager();
+    
+    ProcessManagerADT pm = createProcessManager();
+    PBC* idleProcess = createPCB("idle", idle, 0, NULL, IDLE_PRIORITY, 0, -1, -1);
+    setIdleProcess(pm, idleProcess);
+    processManages = pm;
 }
 
-SchedulerADT createScheduler() {
-    if (scheduler) return scheduler;
-    scheduler = (SchedulerADT)allocMemory(sizeof(SchedulerCDT));
-    if (!scheduler) return NULL;
-    memset(scheduler, 0, sizeof(SchedulerCDT));
-    scheduler->nextPid = 1;
-    scheduler->quantum = 1;
-    scheduler->started = 1;
-    return scheduler;
+pid_t createProcess(char* name, fnptr function, uint64_t argc, char **arg, int8_t priority, char foreground, int stdin, int stdout) {
+    PBC * newProcess = createProcessOnPCB(name, function, argc, arg, priority, foreground, stdin, stdout);
+    retunr newProcess ? newProcess->pid : -1;
 }
 
-static void enqueue(Process *p) {
-    if (!p || !scheduler) return;
-    int pr = p->priority < SCHED_MAX_PRIORITY ? p->priority : 0;
-    if (!scheduler->readyLists[pr]) scheduler->readyLists[pr] = createDoubleLinkedList();
-    insertLast(scheduler->readyLists[pr], p);
-    p->state = 1; // READY
-}
-
-static Process *dequeue(int pr) {
-    if (!scheduler) return NULL;
-    if (pr < 0 || pr >= SCHED_MAX_PRIORITY) return NULL;
-    if (!scheduler->readyLists[pr] || isEmpty(scheduler->readyLists[pr])) return NULL;
-    Process *p = (Process*)getFirst(scheduler->readyLists[pr]);
-    removeFirst(scheduler->readyLists[pr]);
-    return p;
-}
-
-uint16_t Sched_createProcess(Code entryPoint, char *name, uint64_t argc, char *argv[], uint8_t priority) {
-    if (!scheduler) createScheduler();
-    Process *p = (Process*)allocMemory(sizeof(Process));
-    if (!p) return (uint16_t)-1;
-    memset(p, 0, sizeof(Process));
-    uint16_t pid = scheduler->nextPid++;
-    initProcess(p, pid, 0, entryPoint, argv, name, priority, NULL);
-
-    // allocate stack
-    void *stack = allocMemory(SCHED_STACK_SIZE);
-    if (!stack) {
-        freeMemory(p);
-        return (uint16_t)-1;
+static PCB * createProcessOnPCB(char *name, fnptr function, uint64_t argc, char **arg, int8_t priority, char foreground, int stdin, int stdout) {
+    if(name == NULL || function == NULL || priority < MIN_PRIORITY || priority > MAX_PRIORITY ) {
+        return NULL;
     }
-    p->stackBase = stack;
-    uint64_t *sp = (uint64_t*)((uint8_t*)stack + SCHED_STACK_SIZE);
 
-    // entry point will be processWrapper; pass original entryPoint in rdx
-    extern void processWrapper(int, char**, Code);
-    uint64_t rip = (uint64_t)processWrapper;
-    uint64_t cs = 0x08;
-    uint64_t rflags = 0x202;
-    // copy args into process memory (do this before building the initial register frame)
-    if (argc > 0 && argv) {
-        p->args = (char **)allocMemory(sizeof(char*) * (argc + 1));
-        if (p->args) {
-            for (uint64_t i = 0; i < argc; i++) {
-                if (argv[i]) {
-                    size_t len = strlen(argv[i]) + 1;
-                    char *s = (char*)allocMemory(len);
-                    if (s) memcpy(s, argv[i], len);
-                    p->args[i] = s;
-                } else {
-                    p->args[i] = NULL;
-                }
-            }
-            p->args[argc] = NULL;
+    PCB *newProcess = allocMemory(sizeof(PCB));
+    if(newProcess == NULL) {
+        return NULL;
+    }
+
+    if(priority > IDLE_PRIORITY) {
+        priority = MAX_PRIORITY;
+    }
+
+    strncpy(newProcess->name, name, MAX_PROCESS_NAME_LENGTH);
+    newProcess->pid = nextPid++;
+    newProcess->state = READY;
+    newProcess->priority = priority;
+    newProcess->foreground = foreground;
+    newProcess->stdin = stdin;
+    newProcess->stdout = stdout;
+    newProcess->waitingForPid = -1;
+    newProcess->retValue = 0;
+    newProcess->parentPid = getCurrentPid();
+    
+    newProcess->entryPoint = (uint64_t)function;
+
+    newProcess->rsp = setUpStack(&process->base, (uint64_t)function, argc, arg){
+        if(newProcess->rsp == 0) {
+            freeMemory(newProcess);
+            return NULL;
+    }
+
+
+    if(processManager == NULL) {
+        freeMemory(newProcess);
+        return NULL;
+    }
+
+    if(newProcess->pid > 1){
+        if(!foreground && !stdin){
+            newProcess->stdout = stdout;
+            newProcess->State = BLOCKED;
+            addToBlocked(processManager, newProcess);
+            return newProcess;
         }
+        newProcess->stdin = stdin ? getCurrentStdin() : stdin;
+        newProcess->stdout = stdout ? getCurrentStdout() : stdout;
+
     }
-
-    // place interrupt return frame in order RFLAGS, CS, RIP so after popState the iretq reads RIP,CS,RFLAGS
-    *(--sp) = rflags;
-    *(--sp) = cs;
-    *(--sp) = rip;
-
-    // push registers in same order as pushState: r15,r14,r13,r12,r11,r10,r9,r8,rbp,rdi,rsi,rdx,rcx,rbx,rax
-    uint64_t regs[15];
-    for (int i = 0; i < 15; i++) regs[i] = 0;
-    // set rdi = argc, rsi = argv pointer, rdx = original entryPoint
-    regs[9] = (uint64_t)argc;
-    regs[10] = (uint64_t)p->args;
-    regs[11] = (uint64_t)entryPoint;
-    for (int i = 14; i >= 0; i--) *(--sp) = regs[i];
-    p->stackPos = (void*)sp;
-    p->state = 1;
-    // parent/children bookkeeping
-    if (scheduler->current) {
-        p->parentPid = scheduler->current->pid;
-        if (!scheduler->current->children) scheduler->current->children = createDoubleLinkedList();
-        insertLast(scheduler->current->children, p);
-        scheduler->current->childrenCount++;
-    } else {
-        p->parentPid = 0;
-    }
-
-    enqueue(p);
-    return pid;
-}
-
-// helper to find a process by pid (search ready lists, blocked list and current)
-static Process *findProcessByPid(uint16_t pid) {
-    if (!scheduler) return NULL;
-    if (scheduler->current && scheduler->current->pid == pid) return scheduler->current;
-    for (int pr = 0; pr < SCHED_MAX_PRIORITY; pr++) {
-        if (!scheduler->readyLists[pr]) continue;
-        Node *it = scheduler->readyLists[pr]->first;
-        while (it) {
-            Process *proc = (Process*)it->data;
-            if (proc->pid == pid) return proc;
-            it = it->next;
+    else if(newProcess->pid == SHELL_PID){
+        newProcess->stdin = pipeCreate(0); // VER CUAL ES EL ID
+        if(newProcess->stdin < 0){
+            freeMemory((void*)newProcess->base - STACK_SIZE);
+            freeMemory(newProcess);
+            return NULL;
         }
+        newProcess->stdout = 1; // terminal
     }
-    if (scheduler->blockedList) {
-        Node *it = scheduler->blockedList->first;
-        while (it) {
-            Process *proc = (Process*)it->data;
-            if (proc->pid == pid) return proc;
-            it = it->next;
-        }
+    if(priority != IDLE_PRIORITY) {
+        addProcess(processManager, newProcess);
     }
-    return NULL;
+
+    retunr newProcess;
 }
 
-int Sched_killProcess(uint16_t pid) {
-    if (!scheduler) return -1;
-    for (int pr = 0; pr < SCHED_MAX_PRIORITY; pr++) {
-        if (!scheduler->readyLists[pr]) continue;
-        Node *it = scheduler->readyLists[pr]->first;
-        while (it) {
-            Process *proc = (Process*)it->data;
-            if (proc->pid == pid) {
-                removeElement(scheduler->readyLists[pr], proc);
-                proc->state = 4; // ZOMBIE
-                closeFileDescriptors(proc);
-                freeProcess(proc);
-                return 0;
-            }
-            it = it->next;
-        }
-    }
-    if (scheduler->current && scheduler->current->pid == pid) {
-        scheduler->current->state = 4;
-        return 0;
-    }
-    return -1;
+pid_t getForegrounfdPid() {
+    PCB* fgProcess = getForegroundProcess(processManager);
+    return fgProcess ? fgProcess->pid : -1;
 }
 
-int Sched_blockProcess(uint16_t pid) {
-    if (!scheduler) return -1;
-    for (int pr = 0; pr < SCHED_MAX_PRIORITY; pr++) {
-        if (!scheduler->readyLists[pr]) continue;
-        Node *it = scheduler->readyLists[pr]->first;
-        while (it) {
-            Process *proc = (Process*)it->data;
-            if (proc->pid == pid) {
-                removeElement(scheduler->readyLists[pr], proc);
-                if (!scheduler->blockedList) scheduler->blockedList = createDoubleLinkedList();
-                insertLast(scheduler->blockedList, proc);
-                proc->state = 3;
-                return 0;
-            }
-            it = it->next;
-        }
-    }
-    return -1;
+pid_t getCurrentPid() {
+    PBC * currentProcess = getCurrentProcess(processManager);
+    return currentProcess ? currentProcess->pid : -1;    
 }
 
-int Sched_unblockProcess(uint16_t pid) {
-    if (!scheduler || !scheduler->blockedList) return -1;
-    Node *it = scheduler->blockedList->first;
-    while (it) {
-        Process *proc = (Process*)it->data;
-        if (proc->pid == pid) {
-            removeElement(scheduler->blockedList, proc);
-            enqueue(proc);
-            proc->state = 1;
-            return 0;
-        }
-        it = it->next;
+uint64_t scheduele(){
+    static int firstCall = 1;
+    PCB* currentProcess = getCurrentProcess(processManager);
+    
+    if(time_quantum > 0 && currentProcess->state == RUNNING && !isIdleProcess(processManager, currentProcess->pid)) {
+        time_quantum--;
+        return rsp;
     }
-    return -1;
+
+    if(!firstCall){
+        currentProcess->rsp = rsp;
+    }
+    else {
+        firstCall = 0;
+    }
+    if(currentProcess->state == RUNNING){
+        currentProcess->state = READY;
+    }
+
+    PCB * nextProcess = getNextReadyProcess(processManager);
+
+    nextProcess->state = RUNNING;
+    currentPid = nextProcess->pid;
+    time_quantum = nextProcess->priority == IDLE_PRIORITY ? TIME_QUANTUM : TIME_QUANTUM * (MAX_PRIORITY - nextProcess->priority + 1);
+    return nextProcess->rsp;
 }
 
-int Sched_setPriority(uint16_t pid, uint8_t priority) {
-    if (!scheduler) return -1;
-    // naive: search ready lists and blocked list and update priority
-    for (int pr = 0; pr < SCHED_MAX_PRIORITY; pr++) {
-        if (!scheduler->readyLists[pr]) continue;
-        Node *it = scheduler->readyLists[pr]->first;
-        while (it) {
-            Process *proc = (Process*)it->data;
-            if (proc->pid == pid) {
-                proc->priority = priority;
-                // move to correct queue
-                removeElement(scheduler->readyLists[pr], proc);
-                enqueue(proc);
-                return 0;
-            }
-            it = it->next;
-        }
+uint64_t blockProcess(pid_t pid) {
+    if(blockProcessQueue(processManager, pid)) {
+        return -1;
     }
-    // also check blocked list
-    if (scheduler->blockedList) {
-        Node *it = scheduler->blockedList->first;
-        while (it) {
-            Process *proc = (Process*)it->data;
-            if (proc->pid == pid) {
-                proc->priority = priority;
-                return 0;
-            }
-            it = it->next;
-        }
-    }
-    if (scheduler->current && scheduler->current->pid == pid) {
-        scheduler->current->priority = priority;
-        return 0;
-    }
-    return -1;
+    if(pid == getCurrentPid){
+        yield();
+    }   
+    reurn 0;
 }
 
-int Sched_yield(void) {
-    if (!scheduler || !scheduler->current) return -1;
-    scheduler->current->state = 1;
-    enqueue(scheduler->current);
-    // actual context switch will occur at next tick (schedule called from irq)
-    return 0;
-}
-
-uint64_t Sched_getPid(void) {
-    if (!scheduler || !scheduler->current) return 0;
-    return scheduler->current->pid;
-}
-
-int Sched_waitChildren(void) {
-    if (!scheduler || !scheduler->current) return -1;
-    while (scheduler->current->childrenCount > 0) {
-        Sched_yield();
+uint64_t blockProcessBySem(pid_t pid) {
+    if(blockProcessQueueBySem(processManager, pid)) {
+        return -1;
+    }
+    if(pid == getCurrentPid()){
+        yield();
     }
     return 0;
 }
 
-void Sched_listProcesses(void) {
-    if (!scheduler) return;
-    for (int pr = SCHED_MAX_PRIORITY-1; pr >= 0; pr--) {
-        if (!scheduler->readyLists[pr]) continue;
-        Node *it = scheduler->readyLists[pr]->first;
-        while (it) {
-            Process *proc = (Process*)it->data;
-            if (proc->name) printStr(proc->name, 0x00FFFFFF);
-            printStr(" pid=", 0x00FFFFFF);
-            printInt(proc->pid, 0x00FFFFFF);
-            printStr(" pr=", 0x00FFFFFF);
-            printInt(proc->priority, 0x00FFFFFF);
-            printStr(" state=", 0x00FFFFFF);
-            printInt(proc->state, 0x00FFFFFF);
-            printStr(" stackBase=", 0x00FFFFFF);
-            printInt((uint64_t)proc->stackBase, 0x00FFFFFF);
-            printStr(" stackPos=", 0x00FFFFFF);
-            printInt((uint64_t)proc->stackPos, 0x00FFFFFF);
-            printStr(" fg=", 0x00FFFFFF);
-            printInt(proc->foreground, 0x00FFFFFF);
-            printStr(" children=", 0x00FFFFFF);
-            printInt(proc->childrenCount, 0x00FFFFFF);
-            printStr(" exit=", 0x00FFFFFF);
-            printInt(proc->exitCode, 0x00FFFFFF);
-            printStr("\n", 0x00FFFFFF);
-            it = it->next;
-        }
-    }
-    if (scheduler->current) {
-        printStr("Current pid=", 0x00FF00);
-        printInt(scheduler->current->pid, 0x00FF00);
-        printStr("\n", 0x00FF00);
-    }
+void yield() {
+    time_quantum = 0;
+    callTimerTick();
 }
 
-// schedule: called from irq handler with current RSP in rdi (rsp param)
-uint64_t schedule(uint64_t rsp) {
-    if (!scheduler) return rsp;
-    // save current stack pointer
-    if (scheduler->current) {
-        scheduler->current->stackPos = (void*)rsp;
-        if (scheduler->current->state == 4) { // ZOMBIE
-            // notify parent: remove from parent's children list and decrement count
-            Process *child = scheduler->current;
-            Process *parent = findProcessByPid(child->parentPid);
-            if (parent && parent->children) {
-                removeElement(parent->children, child);
-                if (parent->childrenCount > 0) parent->childrenCount--;
+uint64_t unblockProcess(pid_t pid) {
+    if(unblockProcessQueue(processManager, pid)) {
+        return -1;
+    }
+    return 0;
+}
+
+uint64_t unblockProcessBySem(pid_t pid) {
+    return unblockProcessQueueBySem(processManager, pid)
+}
+
+uint64_t kill(pid_t pid, uint64_t retValue) {
+    if(pid <= 1) {
+        return -1;
+    }
+    PCB* process = killProcess(processManager, pid, retValue, ZOMBIE);
+    if(process == NULL) {
+        return -1;
+    }
+
+    freeMemory((void*)process->base - STACK_SIZE);
+    wakeUpWaitingParent(process->parentPid, pid);
+    if(pid == getCurrentPid()) {
+        yield();
+    }
+
+    return ;
+}
+
+/*
+This occurs for the child processes, where the entry is still needed to allow the parent
+ process to read its child's exit status: once the exit status is read via the wait system call, the
+  defunct process'
+ entry is removed from the process table and it is said to be "reaped".*/
+static int32_t reapCild(PCB* childProcess, int * retValue) {
+    
+    if(childProcess == NULL || childProcess->state != ZOMBIE) { 
+        return -1;
+    }
+
+    if(retValue != NULL) {
+        *retValue = childProcess->retValue;
+    }
+    int32_t c = childProcess->pid;
+    childProcess->state = childProcess->retValue; 
+
+    removeZombieProcess(processManager, childProcess->pid);
+    freeMemory((void*)childProcess->base - STACK_SIZE);
+    freeMemory(childProcess);
+    return c;
+}
+
+static void wakeUpWaitingParent(pid_t parentPid, pid_t childPid) {
+    if(parentPid < 0) {
+        return;
+    }
+
+    if(partentPid == getIdleProcess(processManager)->pid) {
+        reapCild(getProcess(processManager, childPid), NULL);
+    }
+
+
+    PCB* parentProcess = getProcess(processManager, parentPid);
+    if(parentProcess != NULL && parentProcess->waitingForPid == childPid) {
+        unblockProcess(processManager, parentPid);
+    }
+
+    return;
+}
+
+int32_t waitpid(pid_t pid, int32_t* retValue) {
+    pid_t currentPid = getCurrentPid();
+    if(currentPid < 0) {
+        return -1;
+    }
+
+    PCB * proc = getProcess(processManager, currentPid);
+    if(proc == NULL) {
+        return -1;
+    }
+
+    PCB * currentProcess = getCurrentProcess(processManager, currentPid);
+
+    if(currentProcess == NULL) {
+        return -1;
+    }
+
+    if(proc->paretnPid == != currentPid && currentProcess->pid != pid) {
+        return -1;
+    }
+
+    if(proc->state == ZOMBIE) {
+        currentProcess->waitingForPid = -1;
+        return reapCild(proc, retValue);
+    }
+
+    if(proc->state < ZOMBIE) {
+        currentProcess->waitingForPid = pid;
+        currentProcess->state = BLOCKED;
+
+        if(blockProcess(currentPid)) {
+            currentProcess->waitingForPid = -1;
+            currentProcess->state = READY;
+            return -1;
+        }
+
+        proc = getProcess(processManager, currentPid);
+        if(proc == NULL) {
+            return -1;
+        }
+
+        if(proc->state == ZOMBIE) {
+            currentProcess->waitingForPid = -1;
+            return reapCild(proc, retValue);
+        } else {
+
+    }
+    return -1; // should not reach here
+}
+
+
+int8_t changePrio(pid_t pid, int8_t newPrio) {
+    if(newPrio < MIN_PRIORITY || newPrio > MAX_PRIORITY) {
+        return -1;
+    }
+
+    PCB* process = getProcess(processManager, pid);
+    if(process == NULL) {
+        return -1;
+    }
+
+    process->priority = newPrio;
+    return newPrio;
+}
+
+PCB* getProcessInfo(uint64_t *cantProcesses){
+    if ( processes == NULL) {
+        *cantProcesses = 0;
+        return NULL;
+    }
+    
+    uint64_t count = countProcesses(processes);
+
+    PCB* processInfo = allocMemory(sizeof(PCB) * count);
+    if (processInfo == NULL) {
+        *cantProcesses = 0;
+        return NULL;
+    }
+    
+    uint64_t j = 0;
+    for (uint64_t i = 0; j < count; i++) {
+        PCB* process = getProcess(processes, i);
+        if (process != NULL) {
+            if (copyProcess(&processInfo[j++], process) == -1) {
+                freeMemory(processInfo);
+                *cantProcesses = 0;
+                return NULL;
             }
-            closeFileDescriptors(child);
-            if (child->stackBase) freeMemory(child->stackBase);
-            // free child's children list structure (does not free child objects)
-            if (child->children) freeList(child->children);
-            freeMemory(child);
-            scheduler->current = NULL;
-        } else if (scheduler->current->state == 2) { // RUNNING
-            scheduler->current->state = 1;
-            enqueue(scheduler->current);
-        }
+        } 
     }
 
-    // pick next process
-    Process *next = NULL;
-    for (int pr = SCHED_MAX_PRIORITY - 1; pr >= 0; pr--) {
-        if (scheduler->readyLists[pr] && !isEmpty(scheduler->readyLists[pr])) {
-            next = dequeue(pr);
-            break;
-        }
-    }
-
-    if (!next) return rsp;
-    next->state = 2; // RUNNING
-    scheduler->current = next;
-    if (scheduler->current->stackPos) return (uint64_t)scheduler->current->stackPos;
-    return rsp;
+    *cantProcesses = j;
+    return processInfo;
 }
+
+int16_t copyProcess(PCB *dest, PCB *src){
+    if (dest == NULL || src == NULL) {
+        return -1;
+    }
+    
+    dest->pid = src->pid;
+    dest->parentPid = src->parentPid;
+    dest->waitingForPid = src->waitingForPid;
+    dest->priority = src->priority;
+    dest->state = src->state;
+    dest->rsp = src->rsp;
+    dest->base = src->base;
+    dest->entryPoint = src->entryPoint;
+    dest->retValue = src->retValue;
+    dest->foreground = src->foreground;
+    dest->stdin = src->stdin;
+    dest->stdout = src->stdout;
+    strncpy(dest->name, src->name, MAX_PROCESS_NAME_LENGTH);
+    
+    return 0;
+}
+
+int getCurrentProcessStdin(){
+    PCB * currentProcess = getCurrentProcess(processManager);
+    if(currentProcess == NULL){
+        return -1;
+    }
+    return currentProcess->stdin;
+}
+
+int getCurrentProcessStdout(){
+    PCB * currentProcess = getCurrentProcess(processManager);
+    if(currentProcess == NULL){
+        return -1;
+    }
+    return currentProcess->stdout;
+}
+
+
+
+

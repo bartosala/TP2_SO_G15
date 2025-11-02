@@ -2,14 +2,11 @@
 #include <syscall.h>
 #include "test_util.h"
 #include <testfunctions.h>
-
-enum State { RUNNING,
-             BLOCKED,
-             KILLED };
+#include <shared_structs.h>
 
 typedef struct P_rq {
   int32_t pid;
-  enum State state;
+  State state;
 } p_rq;
 
 int64_t test_processes(uint64_t argc, char *argv[]) {

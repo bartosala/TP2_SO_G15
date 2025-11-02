@@ -6,77 +6,430 @@
 #include <lib.h>
 #include <stddef.h>
 #include <string.h>
+#include <shared_structs.h>
+typedef struct ProcessManagerCDT {
+    PCB* foregroundProcess;
+    PCB* currentProcess;
+    QueueADT readyQueue;
+    QueueADT blockedQueue;
+    QueueADT blockedQueueBySem;
+    QueueADT zombieQueue;
+    PCB* idleProcess;
+} ProcessManagerCDT;
 
-void initProcess(Process *process, uint16_t pid, uint16_t parentPid, Code program, char **args, char *name, uint8_t priority, int16_t fileDescriptors[]) {
-    if (!process) return;
-    process->pid = pid;
-    process->parentPid = parentPid;
-    process->program = program;
-    process->args = args;
-    process->name = name;
-    process->priority = priority;
-    if (fileDescriptors) memcpy(process->fileDescriptors, fileDescriptors, sizeof(process->fileDescriptors));
-    else for (int i = 0; i < 15; i++) process->fileDescriptors[i] = -1;
-
-    process->stackBase = NULL;
-    process->stackPos = NULL;
-    process->children = NULL;
-    // create children list on demand; create now for convenience
-    process->children = createDoubleLinkedList();
-    process->state = 0; // NEW
-    process->foreground = 0;
-    process->exitCode = 0;
-    process->childrenCount = 0;
+ProcessManagerADT createProcessManager() {
+    ProcessManagerADT processManager = malloc(sizeof(ProcessManagerCDT));
+    if(processManager == NULL) {
+        return NULL;
+    }   
+    processManager->foregroundProcess = NULL;
+    processManager->currentProcess = NULL;
+    processManager->readyQueue = createQueue();
+    if(processManager->readyQueue == NULL) {
+        freeMemory(processManager);
+        return NULL;
+    }
+    processManager->blockedQueue = createQueue();
+    if(processManager->blockedQueue == NULL) {
+        destroyQueue(processManager->readyQueue);
+        freeMemory(processManager);
+        return NULL;
+    }
+    processManager->blockedQueueBySem = createQueue();
+    if(processManager->blockedQueueBySem == NULL) {
+        destroyQueue(processManager->readyQueue);
+        destroyQueue(processManager->blockedQueue);
+        destroyQueue(processManager->zombieQueue); // nescesario ? creo que no zombie va despues 
+        freeMemory(processManager);
+        return NULL;
+    }
+    processManager->zombieQueue = createQueue();
+    if(processManager->zombieQueue == NULL) {
+        destroyQueue(processManager->readyQueue);
+        destroyQueue(processManager->blockedQueue);
+        destroyQueue(processManager->blockedQueueBySem);
+        freeMemoryMemory(processManager);
+        return NULL;
+    }
+    processManager->idleProcess = NULL;
+    return processManager;
 }
 
-void closeFileDescriptors(Process *process) {
-    if (!process) return;
-    for (int i = 0; i < 15; i++) process->fileDescriptors[i] = -1;
+int compareByPid(void* a, void* b) {
+    PCB* pcbA = (PCB*)a;
+    PCB* pcbB = (PCB*)b;
+    return (pcbA->pid == pcbB->pid) ? 0 : -1;
 }
 
-void freeProcess(Process *process) {
-    if (!process) return;
-    if (process->stackBase) freeMemory(process->stackBase);
-    if (process->children) freeList(process->children);
-    freeMemory(process);
+int hasPid(void* a, void*b){ 
+    if (a == NULL || b == NULL) {
+        return -1;
+    }
+    PCB* processA = (PCB*)a;
+    pid_t* pid = (pid_t*)b;
+    
+    return (processA->pid == *pid) ? 0 : -1;
 }
 
-// Allocate and copy argv strings into kernel-managed memory for a process
-char **allocArgv(Process *p, char **argv, int argc) {
-    if (!p) return NULL;
-    if (argc <= 0) return NULL;
-    char **newargv = (char**)allocMemory(sizeof(char*) * (argc + 1));
-    if (!newargv) return NULL;
-    for (int i = 0; i < argc; i++) {
-        if (argv[i]) {
-            size_t len = strlen(argv[i]) + 1;
-            char *s = (char*)allocMemory(len);
-            if (!s) {
-                // cleanup
-                for (int j = 0; j < i; j++) if (newargv[j]) freeMemory(newargv[j]);
-                freeMemory(newargv);
+void addProcess(ProcessManagerADT pm, PCB* process) {
+    if(pm == NULL || process == NULL) {
+        return;
+    }
+
+    if(pm->currentProcess == NULL  || pm->currentProcess == pm->idleProcess) {
+        pm->currentProcess = process;
+        return;
+    }
+    enqueue(pm->readyQueue, process);
+}
+
+
+void removeFromReady(ProcessManagerADT pm, pid_t pid) { // VER ESTA FUNCION
+    if(pm == NULL) {
+        return;
+    }
+
+    remove(list->readyQueue , &pid, hasPid);
+    if(list->foregroundProcess && list->foregroundProcess->pid == pid) {
+        list->foregroundProcess = NULL;
+    }
+}
+
+void removeFromZombie(ProcessManagerADT pm, pid_t pid) {
+    if(pm == NULL) {
+        return;
+    }
+
+    remove(pm->zombieQueue , &pid, hasPid);
+}
+
+static PCB* switchProcessFromQueues(QueueADT queueFrom, QueueADT queueTo, pid_t pid) {
+    if(queueFrom == NULL || queueTo == NULL) {
+        return NULL;
+    }
+    // Lo remuevo de la cola origen
+    PCB* process = (PCB*)remove(queueFrom, &pid, hasPid);
+    if(process == NULL) {
+        return NULL;
+    }
+    // Lo agrego a la cola destino
+    enqueue(queueTo, process); // ver 
+    return process;
+}
+
+int blockProcessQueue(ProcessManagerADT list, pid_t pid) {
+    if (list == NULL) {
+        return -1; 
+    }
+    QueueADT queue = list->readyQueue;
+    PCB* process = (PCB*)contains(list->readyQueue, &pid, hasPid);
+    if (process == NULL) {
+        process = (PCB*)contains(list->blockedQueueBySem, &pid, hasPid);
+        if(process == NULL) {
+            return -1; 
+        }
+        queue = list->blockedQueueBySem;
+    }
+    
+    process = switchProcess(queue, list->blockedQueue, pid);
+    if (process == NULL) {
+        return -1;
+    }
+    
+    if (process->state != BLOCKED) {
+        process->state = BLOCKED;
+    }
+    
+    return 0;
+}
+
+int blockProcessQueueBySem(ProcessManagerADT list, pid_t pid) {
+    if (list == NULL) {
+        return -1; 
+    }
+    
+    PCB* process = switchProcess(list->readyQueue, list->blockedQueueBySem, pid);
+    if (process == NULL) {
+        return -1; 
+    }
+    
+    if (process->state != BLOCKED) {
+        process->state = BLOCKED;
+    }
+    
+    return 0;
+}
+// Misma idea que blockProcessQueue
+int unblockProcessQueue(ProcessManagerADT list, pid_t pid) {
+    if (list == NULL) {
+        return -1; 
+    }
+    
+    PCB* process = switchProcess(list->blockedQueue, list->readyQueue, pid);
+    if (process == NULL) {
+        return -1; 
+    }
+    
+    if (process->state != READY) {
+        process->state = READY;
+    }
+    
+    return 0;
+}
+
+int unblockProcessQueueBySem(ProcessManagerADT list, pid_t pid) {
+    if (list == NULL) {
+        return -1; 
+    }
+    
+    PCB* process = switchProcess(list->blockedQueueBySem, list->readyQueue, pid);
+    if (process == NULL) {
+        return -1; 
+    }
+    
+    if (process->state != READY) {
+        process->state = READY;
+    }
+    
+    return 0;
+}
+
+void freeProcessLinkedLists(ProcessManagerADT pm) {
+    if(pm == NULL) {
+        return;
+    }
+    destroyQueue(pm->readyQueue);
+    destroyQueue(pm->blockedQueue);
+    destroyQueue(pm->blockedQueueBySem); // estos dos tambien ? 
+    destroyQueue(pm->zombieQueue);
+    freeMemory(pm);
+}
+
+PCB* getProcess(ProcessManagerADT pm, pid_t pid) {
+    if(pm == NULL) {
+        return NULL;
+    }
+
+    PCB* process = (PCB*)contains(pm->readyQueue, &pid, hasPid);
+    if(process != NULL) {
+        return process;
+    }
+
+    process = (PCB*)contains(pm->blockedQueue, &pid, hasPid);
+    if(process != NULL) {
+        return process;
+    }
+
+    process = (PCB*)contains(pm->blockedQueueBySem, &pid, hasPid);
+    if(process != NULL) {
+        return process;
+    }
+
+    process = (PCB*)contains(pm->zombieQueue, &pid, hasPid);
+    if(process != NULL) {
+        return process;
+    }
+
+    if(pm->currentProcess != NULL && pm->currentProcess->pid == pid) {
+        return pm->currentProcess;
+    }
+
+    if(pm->idleProcess != NULL && pm->idleProcess->pid == pid) {
+        return pm->idleProcess;
+    }
+
+    return NULL; // no deberia llegar aca nunca
+}
+
+PCB* getNextReadyProcess(ProcessManagerADT pm) {
+    if(pm == NULL) {
+        return NULL;
+    }
+
+    if(isQueueEmpty(pm->readyQueue)) {
+        pm->currentProcess = pm->idleProcess;
+        return pm->idleProcess;
+    }
+
+    PCB* nextProcess = (PCB*)dequeue(pm->readyQueue);
+    if(nextProcess == NULL) {
+        return NULL;
+    }
+
+    if(enqueue(pm->readyQueue, nextProcess) == 0) {
+        return NULL;
+    }
+
+    pm->currentProcess = nextProcess;
+    if(foregroundProcess(nextProcess)) {
+        foregroundProcessSet(pm, nextProcess);
+    }
+    return nextProcess;
+}
+
+int hasNextReadyProcess(ProcessManagerADT pm) {
+    if(pm == NULL) {
+        return 0;
+    }
+
+    return !isQueueEmpty(pm->readyQueue);
+}
+
+PCB* getCurrentProcess(ProcessManagerADT pm) {
+    if(pm == NULL) {
+        return NULL;
+    }
+
+    return pm->currentProcess;
+}
+
+
+void setIdleProcess(ProcessManagerADT pm, PCB* idleProcess) {
+    if(pm == NULL || idleProcess == NULL) {
+        return;
+    }
+
+    pm->idleProcess = idleProcess;
+    pm->currentProcess = idleProcess;
+}
+
+void foregroundProcessSet(ProcessManagerADT pm, PCB* process) {
+    if(pm == NULL) {
+        return;
+    }
+
+    pm->foregroundProcess = process;
+}
+
+PBC* getIdleProcess(ProcessManagerADT pm) {
+    if(pm == NULL) {
+        return NULL;
+    }
+
+    return pm->idleProcess;
+}   
+
+uint_64 processCount(ProcessManagerADT pm) {
+    if(pm == NULL) {
+        return 0;
+    }
+
+    uint_64 count = 0;
+    count += queueSize(pm->readyQueue);
+    count += queueSize(pm->blockedQueue);
+    count += queueSize(pm->blockedQueueBySem);
+    count += queueSize(pm->zombieQueue);
+    count++; 
+    
+    return count;   
+}
+
+uint_64 readyProcessCount(ProcessManagerADT pm) {
+    if(pm == NULL) {
+        return 0;
+    }
+
+    return queueSize(pm->readyQueue);
+}
+
+uint_64 blockedProcessCount(ProcessManagerADT pm) {
+    if(pm == NULL) {
+        return 0;
+    }
+
+    return queueSize(pm->blockedQueue) + queueSize(pm->blockedQueueBySem);
+}
+
+uint_64 zombieProcessCount(ProcessManagerADT pm) {
+    if(pm == NULL) {
+        return 0;
+    }
+
+    return queueSize(pm->zombieQueue);
+}
+
+PCB* getForegroundProcess(ProcessManagerADT pm) {
+    if(pm == NULL) {
+        return NULL;
+    }
+
+    return pm->foregroundProcess;
+}
+
+bool isCurrentProcessForeground(ProcessManagerADT pm, pid_t pid) {
+    retunr pm && pm->foregroundProcess && pm->foregroundProcess->pid == pid;
+}
+
+bool isIdleProcess(ProcessManagerADT pm, pid_t pid) {
+    return pm && pm->idleProcess && pm->idleProcess->pid == pid;
+}
+
+bool isForegroundProcess(PCB* process) {
+    return process && process->isForeground;
+}
+
+PCB * killProcess(ProcessManagerADT, pid_t pid, uint_64 ret, State state) {
+    if (pm == NULL) {
+        return NULL;
+    }
+
+    if(pm->currentProcess && pm->currentProcess->pid == pid) {
+        pm->currentProcess = pm->idleProcess;
+    }
+    // Intento sacarlo de todas las colas
+    PCB* process = switchProcessFromQueues(pm->readyQueue, pm->zombieQueue, pid);
+    if(process == NULL) {
+        process = switchProcessFromQueues(pm->blockedQueue, pm->zombieQueue, pid);
+        if(process == NULL) {
+            process = switchProcessFromQueues(pm->blockedQueueBySem, pm->zombieQueue, pid);
+            if(process == NULL) {
                 return NULL;
             }
-            memcpy(s, argv[i], len);
-            newargv[i] = s;
-        } else newargv[i] = NULL;
     }
-    newargv[argc] = NULL;
-    p->args = newargv;
-    p->argc = argc;
-    return newargv;
+
+    if(list->foregroundProcess && list->foregroundProcess->pid == pid) {
+        list->foregroundProcess = NULL;
+    }
+
+    process->retValue = ret;
+    process->state = state;
+    return process;
+}   
+
+int stdintProcess(ProcessManagerADT pm, pid_t pid){
+    PCB * process = getProcess(pm, pid);
+    if(process == NULL){
+        return -1;
+    }
+    return process->stdin;
 }
 
-// process wrapper: called when a new process starts. Expects registers set so rdi=argc, rsi=argv, rdx=entryPoint
-void processWrapper(int argc, char **argv, Code entry) {
-    if (entry) entry(argc, argv);
-    // when returns, free and exit
-    // attempt to get scheduler and mark exit; scheduler will clean on next tick
-    extern SchedulerADT getScheduler();
-    SchedulerADT s = getScheduler();
-    if (s && s->current) {
-        s->current->state = 4; // ZOMBIE
+int stdoutProcess(ProcessManagerADT pm, pid_t pid){
+    PCB * process = getProcess(pm, pid);
+    if(process == NULL){
+        return -1;
     }
-    while (1) { _hlt(); }
+    return process->stdout;
 }
 
+
+void addToReady(ProcessManagerADT list, PCB* process) {
+    if (list == NULL || process == NULL){ 
+        return;
+    }
+    enqueue(list->readyQueue, process);
+}
+
+void addToBlocked(ProcessManagerADT list, PCB* process) {
+    if (list == NULL || process == NULL) {
+        return;
+    }
+    enqueue(list->blockedQueue, process);
+}
+
+void addToBlockedBySem(ProcessManagerADT list, PCB* process) {
+    if (list == NULL || process == NULL) {
+        return
+    };
+    enqueue(list->blockedQueueBySem, process);
+}
