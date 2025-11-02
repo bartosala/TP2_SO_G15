@@ -22,8 +22,10 @@
 #define ACS_STACK       (ACS_PRESENT | ACS_DSEG | ACS_WRITE)
 
 #define MEMORY_MANAGER_ADDRESS 0x50000                  // aprovechando espacio vacío de la memoria
+#define SEMAPHORE_MANAGER_ADDRESS 0x60000            // dirección para el manager de semáforos
 #define HEAP_START_ADDRESS 0x600000                   // dirección de inicio del heap
 #define HEAP_END_ADDRESS   (512 * 1024 * 1024 - 1)   // fin del heap y fin de la memoria física
 #define HEAP_SIZE         (HEAP_END_ADDRESS - HEAP_START_ADDRESS + 1) // tamaño del heap
+#define BLOCK_SIZE       64  // Tamaño de bloque para el bitmap memory manager
 
 #endif
