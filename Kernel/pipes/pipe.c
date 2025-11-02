@@ -16,7 +16,7 @@ typedef struct PipeManagerCDT* PipeManagerADT;
 static PipeManagerADT pipeManager = NULL;
 
 // Initialize pipe manager
-static PipeManagerADT createPipeManager() {
+PipeManagerADT createPipeManager() { // ESTO PODRIA SER VOID Y NO TIENE QUE SER STATIC
     PipeManagerADT pipeManager = (PipeManagerADT)malloc(sizeof(PipeManagerCDT));
     if (pipeManager == NULL) return NULL;
     
@@ -206,7 +206,7 @@ int pipeWrite(int pipe_fd, const void *buf, size_t count) {
     return bytesWritten;
 }
 
-int pipeClose(int pipe_fd) {
+int pipeClose(int pipe_fd) { // fd ??? tendria que ser id? 
     PipeManagerADT manager = getPipeManager();
     if (manager == NULL) return -1;
     
@@ -233,6 +233,28 @@ int pipeClose(int pipe_fd) {
         pipe->writeIndex = 0;
         manager->usedPipes[pipe_fd] = 0;
     }
+    
+    return 0;
+}
+ // HACER BIEN
+int pipeClear(int id){
+    PipeManagerADT manager = getPipeManager();
+    if (manager == NULL) return -1;
+    
+    pipe_t* pipe = findPipeById(manager, id);
+    if (pipe == NULL || !pipe->isOpen) {
+        return -1;
+    }
+    
+    sem_wait(&pipe->mutex);
+    pipe->count = 0;
+    pipe->readIndex = 0;
+    pipe->writeIndex = 0;
+    sem_post(&pipe->mutex);
+    
+    // Reset semaphores
+    sem_init(&pipe->readSem, 0);
+    sem_init(&pipe->writeSem, PIPE_BUFFER_SIZE);
     
     return 0;
 }

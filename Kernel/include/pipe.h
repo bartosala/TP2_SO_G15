@@ -34,10 +34,12 @@ typedef struct {
 
 typedef struct PipeManagerCDT* PipeManagerADT;
 
+PipeManagerADT createPipeManager();
 int pipeCreate(uint32_t id);               
 int pipeOpen(uint32_t id, int mode);          
 int pipeRead(int pipe_fd, void *buf, size_t count);
 int pipeWrite(int pipe_fd, const void *buf, size_t count);
 int pipeClose(int pipe_fd);
+int pipeClear(int pipe_fd);
 
 #endif // PIPE_H
