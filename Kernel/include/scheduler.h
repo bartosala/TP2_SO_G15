@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <process.h>
 #include <defs.h>
-#include <shared_structs.h>
+#include "../../Shared/shared_structs.h"
 
 /**
  * @brief Schedules the next process to run
@@ -17,7 +17,7 @@ uint64_t scheduleNext(uint64_t rsp);
  * @brief Initializes the scheduler with an idle process
  * @param idle Function pointer to idle process
  */
-void startSchedueler(fnptr idle);
+void startSchedueler(processFun idle);
 
 /**
  * @brief Creates a new process
@@ -29,7 +29,7 @@ void startSchedueler(fnptr idle);
  * @param foreground Whether process is foreground (1) or background (0)
  * @return pid_t Process ID or -1 on failure
  */
-pid_t createProcess(char* name, fnptr function, uint64_t argc, char **arg, int8_t priority, char foreground, int stdin, int stdout);
+pid_t createProcess(char* name, processFun function, uint64_t argc, char **arg, int8_t priority, char foreground, int stdin, int stdout);
 
 /**
  * @brief Gets the current process ID
@@ -119,12 +119,12 @@ int16_t copyProcess(PCB *dest, PCB *src);
  * @brief Gets current process stdin
  * @return int File descriptor or -1 if none
  */
-int getCurrentProcessStdin();
+int getCurrentStdin();
 
 /**
  * @brief Gets current process stdout
  * @return int File descriptor or -1 if none
  */
-int getCurrentProcessStdout();
+int getCurrentStdout();
 
 #endif // SCHEDULER_H

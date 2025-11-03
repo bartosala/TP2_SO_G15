@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define NAME_MAX_LENGTH 32
+
 typedef enum {
     READY,
     RUNNING,
@@ -13,7 +15,7 @@ typedef enum {
     SEM_WAITING
 } State;
 
-typedef size_t pid_t;
+typedef int pid_t;
 
 // Funcion que el proceso ejecuta al iniciarse
 typedef uint64_t (*processFun)(uint64_t argc, char **argv);
@@ -35,5 +37,15 @@ typedef struct {
     int stdout;
     char name[NAME_MAX_LENGTH];
 } PCB;
+
+typedef struct ProcessParams {
+    char* name;
+    processFun function;
+    int8_t priority;
+    char** arg;
+    char foreground;
+    int stdin;
+    int stdout;  
+} ProcessParams;
 
 #endif 

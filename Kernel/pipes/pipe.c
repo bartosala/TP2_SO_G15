@@ -1,7 +1,9 @@
+
 #include <pipe.h>
 #include <process.h>
 #include <scheduler.h>
 #include <stddef.h>
+#include <memoryManager.h>
 
 #define MAX_PIPES 32
 #define INVALID_FD -1
@@ -17,7 +19,7 @@ static PipeManagerADT pipeManager = NULL;
 
 // Initialize pipe manager
 PipeManagerADT createPipeManager() { // ESTO PODRIA SER VOID Y NO TIENE QUE SER STATIC
-    PipeManagerADT pipeManager = (PipeManagerADT)malloc(sizeof(PipeManagerCDT));
+    PipeManagerADT pipeManager = (PipeManagerADT)allocMemory(sizeof(PipeManagerCDT)); // raro
     if (pipeManager == NULL) return NULL;
     
     for (int i = 0; i < MAX_PIPES; i++) {
@@ -28,10 +30,14 @@ PipeManagerADT createPipeManager() { // ESTO PODRIA SER VOID Y NO TIENE QUE SER 
         pipeManager->pipes[i].count = 0;
         pipeManager->pipes[i].readIndex = 0;
         pipeManager->pipes[i].writeIndex = 0;
-        // Initialize semaphores
-        sem_init(&pipeManager->pipes[i].readSem, 0);
-        sem_init(&pipeManager->pipes[i].writeSem, PIPE_BUFFER_SIZE);
-        sem_init(&pipeManager->pipes[i].mutex, 1);
+        // Initialize semaphores - using i*3, i*3+1, i*3+2 as semaphore IDs for each pipe
+        pipeManager->pipes[i].readSemId = i * 3;
+        pipeManager->pipes[i].writeSemId = i * 3 + 1;
+        pipeManager->pipes[i].mutexId = i * 3 + 2;
+        
+        semInit(pipeManager->pipes[i].readSemId, 0);
+        semInit(pipeManager->pipes[i].writeSemId, PIPE_BUFFER_SIZE);  
+        semInit(pipeManager->pipes[i].mutexId, 1);
     }
     return pipeManager;
 }
@@ -106,7 +112,7 @@ int pipeOpen(uint32_t id, int mode) {
         return INVALID_FD;
     }
     
-    uint16_t currentPid = Sched_getPid();
+    pid_t currentPid = getCurrentPid();
     
     if (mode == PIPE_READ) {
         if (pipe->readerPID != -1) {
@@ -134,7 +140,7 @@ int pipeRead(int pipe_fd, void *buf, size_t count) {
     }
     
     pipe_t* pipe = &manager->pipes[pipe_fd];
-    if (!pipe->isOpen || pipe->readerPID != Sched_getPid()) {
+    if (!pipe->isOpen || pipe->readerPID != getCurrentPid()) {
         return -1;
     }
     
@@ -142,17 +148,17 @@ int pipeRead(int pipe_fd, void *buf, size_t count) {
     size_t bytesRead = 0;
     
     while (bytesRead < count) {
-        sem_wait(&pipe->readSem);  // Wait for data
-        sem_wait(&pipe->mutex);
+        semWait(pipe->readSemId);  // Wait for data
+        semWait(pipe->mutexId);
         
         if (pipe->count > 0) {
             buffer[bytesRead++] = pipe->buffer[pipe->readIndex];
             pipe->readIndex = (pipe->readIndex + 1) % PIPE_BUFFER_SIZE;
             pipe->count--;
-            sem_post(&pipe->writeSem);  // Signal space available
+            semPost(pipe->writeSemId);  // Signal space available
         }
         
-        sem_post(&pipe->mutex);
+        semPost(pipe->mutexId);
         
         // If writer closed and no more data
         if (pipe->writerPID == -1 && pipe->count == 0) {
@@ -172,7 +178,7 @@ int pipeWrite(int pipe_fd, const void *buf, size_t count) {
     }
     
     pipe_t* pipe = &manager->pipes[pipe_fd];
-    if (!pipe->isOpen || pipe->writerPID != Sched_getPid()) {
+    if (!pipe->isOpen || pipe->writerPID != getCurrentPid()) {
         return -1;
     }
     
@@ -185,17 +191,17 @@ int pipeWrite(int pipe_fd, const void *buf, size_t count) {
     size_t bytesWritten = 0;
     
     while (bytesWritten < count) {
-        sem_wait(&pipe->writeSem);  // Wait for space
-        sem_wait(&pipe->mutex);
+        semWait(pipe->writeSemId);  // Wait for space
+        semWait(pipe->mutexId);
         
         if (pipe->count < PIPE_BUFFER_SIZE) {
             pipe->buffer[pipe->writeIndex] = buffer[bytesWritten++];
             pipe->writeIndex = (pipe->writeIndex + 1) % PIPE_BUFFER_SIZE;
             pipe->count++;
-            sem_post(&pipe->readSem);  // Signal data available
+            semPost(pipe->readSemId);  // Signal data available
         }
         
-        sem_post(&pipe->mutex);
+        semPost(pipe->mutexId);
         
         // If reader disconnected
         if (pipe->readerPID == -1) {
@@ -215,7 +221,7 @@ int pipeClose(int pipe_fd) { // fd ??? tendria que ser id?
     }
     
     pipe_t* pipe = &manager->pipes[pipe_fd];
-    uint16_t currentPid = Sched_getPid();
+    pid_t currentPid = getCurrentPid();
     
     if (currentPid == pipe->readerPID) {
         pipe->readerPID = -1;
@@ -246,15 +252,15 @@ int pipeClear(int id){
         return -1;
     }
     
-    sem_wait(&pipe->mutex);
+    semWait(pipe->mutexId);
     pipe->count = 0;
     pipe->readIndex = 0;
     pipe->writeIndex = 0;
-    sem_post(&pipe->mutex);
+    semPost(pipe->mutexId);
     
     // Reset semaphores
-    sem_init(&pipe->readSem, 0);
-    sem_init(&pipe->writeSem, PIPE_BUFFER_SIZE);
+    semInit(pipe->readSemId, 0);
+    semInit(pipe->writeSemId, PIPE_BUFFER_SIZE);
     
     return 0;
 }

@@ -12,10 +12,19 @@ void * memset(void * destination, int32_t c, uint64_t length)
 	return destination;
 }
 
-size_t strlen(const char * s){
+uint8_t strlen(const char * s){
 	const char *p = s;
 	while(*p) p++;
 	return (size_t)(p - s);
+}
+
+char * strncpy(char * destination, const char * source, uint64_t length) {
+    uint64_t i;
+    for (i = 0; i < length && source[i] != '\0'; i++)
+        destination[i] = source[i];
+    for (; i < length; i++)
+        destination[i] = '\0';
+    return destination;
 }
 
 void * memcpy(void * destination, const void * source, uint64_t length)

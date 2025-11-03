@@ -6,7 +6,7 @@
 #include <process.h>
 #include <scheduler.h>
 
-#define PIPE_BUFFER_SIZE 4096
+#define PIPE_BUFFER_SIZE 100
 
 typedef enum {
     PIPE_READ = 0,
@@ -27,9 +27,9 @@ typedef struct {
     uint8_t isOpen;          // Pipe state (open/closed)
     uint8_t isFromTerminal;  // Flag to identify if pipe is connected to terminal
     
-    sem_t readSem;          // Semaphore for blocking reads when empty
-    sem_t writeSem;         // Semaphore for blocking writes when full
-    sem_t mutex;            // Mutual exclusion for buffer access
+    uint8_t readSemId;       // ID of semaphore for blocking reads when empty
+    uint8_t writeSemId;      // ID of semaphore for blocking writes when full
+    uint8_t mutexId;         // ID of semaphore for mutual exclusion for buffer access
 } pipe_t;
 
 typedef struct PipeManagerCDT* PipeManagerADT;

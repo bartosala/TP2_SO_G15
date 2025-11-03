@@ -1,5 +1,9 @@
 #include <stddef.h>
 #include <semaphore.h>
+#include <scheduler.h>
+#include <memoryManager.h>
+#include "../../Shared/shared_structs.h"
+#include <queue.h>
 
 #define USED 1 
 #define NOT_USED 0
@@ -17,7 +21,7 @@ static int8_t isValidSemaphore(uint8_t sem) {
 }
 
 SemaphoreADT createSemaphoresManager() {
-    SemaphoreADT semManager = (SemaphoreADT)malloc(sizeof(SemaphoreCDT));
+    SemaphoreADT semManager = (SemaphoreADT)allocMemory(sizeof(SemaphoreCDT));
     if (semManager != NULL) {
         for (int i = 0; i < NUM_SEMS; i++) {
             semManager->semaphores[i].value = 0;
@@ -64,10 +68,11 @@ int8_t semWait(uint8_t sem) {
         release(&semaphore->semaphores[sem].lock);
         return -1;
     }
-    // *pid = Sched_getPid(); cambiar el nombre
+    /* store current pid using scheduler API */
+    *pid = (int)getCurrentPid();
     insertLast(semaphore->semaphores[sem].waitingProcesses, pid);
     release(&semaphore->semaphores[sem].lock);
-    //Sched_yield(); // cambiar el nombre
+    yield();
     return 0;
 }
 
@@ -78,16 +83,14 @@ int8_t semPost(uint8_t sem) {
     acquire(&semaphore->semaphores[sem].lock);
 
     while(!isEmpty(semaphore->semaphores[sem].waitingProcesses)) {
-        int * pid = (int *)getFirst(semaphore->semaphores[sem].waitingProcesses);
-        removeElement(semaphore->semaphores[sem].waitingProcesses, pid);
-        // Sched_unblockProcess(*pid); cambiar el nombre
-        Process *pcb = Sched_getProcessByPid(*pid); //cambiar nombre de la funcion
-        if(pcb == NULL || pcb->state == 3){ // 3 = DEAD
-            free(pid);
-            continue;
-        }
-        //Sched_unblockProcess(pid); cambiar el nombre de la funcion
-        free(pid);
+        int *pid_ptr = (int*)getFirst(semaphore->semaphores[sem].waitingProcesses);
+        if (pid_ptr == NULL) break;
+        removeElement(semaphore->semaphores[sem].waitingProcesses, pid_ptr);
+        pid_t pid = (pid_t)(*pid_ptr);
+        /* use scheduler API to unblock the process */
+        unblockProcess(pid);
+        /* free allocated pid storage */
+        freeMemory(pid_ptr);
         break;
     }
 
@@ -98,6 +101,7 @@ int8_t semPost(uint8_t sem) {
     release(&semaphore->semaphores[sem].lock);
     return 0;
 }
+
 
 int8_t semInit(uint8_t sem, uint8_t value) {
     if (!isValidSemaphore(sem) || semaphore->semaphores[sem].used == USED) {

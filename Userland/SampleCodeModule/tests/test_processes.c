@@ -2,7 +2,7 @@
 #include <syscall.h>
 #include "test_util.h"
 #include <testfunctions.h>
-#include <shared_structs.h>
+#include "../../../Shared/shared_structs.h"
 
 typedef struct P_rq {
   int32_t pid;
@@ -28,7 +28,7 @@ int64_t test_processes(uint64_t argc, char *argv[]) {
 
     // Create max_processes processes
     for (rq = 0; rq < max_processes; rq++) {
-      p_rqs[rq].pid = syscall_create_process("endless_loop", 0, argvAux);
+      p_rqs[rq].pid = syscall_create_process("endless_loop", (processFun)endless_loop, argvAux, 2, 1, -1, 1); // prio 2, fg 1, stdin -1, stdout 1
 
       if (p_rqs[rq].pid == -1) {
         printf("test_processes: ERROR creating process\n");
@@ -52,7 +52,7 @@ int64_t test_processes(uint64_t argc, char *argv[]) {
                 printf("test_processes: ERROR killing process\n");
                 return -1;
               }
-              p_rqs[rq].state = KILLED;
+              p_rqs[rq].state = EXITED;
               alive--;
             }
             break;
@@ -80,4 +80,6 @@ int64_t test_processes(uint64_t argc, char *argv[]) {
         }
     }
   }
+  printf("test_processes: ALL PROCESSES KILLED SUCCESSFULLY\n");
+  return 0;
 }

@@ -24,7 +24,7 @@ QueueADT createQueue() {
     return queue;
 }
 
-void destroyQueue(QueueADT queue) {
+void freeQueue(QueueADT queue) {
     if (queue == NULL) {
         return;
     }
@@ -125,7 +125,7 @@ void* containsQueue(QueueADT queue, void* data, int (*compare)(void*, void*)) {
     return NULL; 
 }
 
-void* removeFromQueue(QueueADT queue, void* data, int (*compare)(void*, void*)) {
+void* remove(QueueADT queue, void* data, int (*compare)(void*, void*)) {
     if (queue == NULL || compare == NULL) {
         return NULL; 
     }

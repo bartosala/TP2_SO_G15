@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <shared_structs.h>  // defines PCB, pid_t, State
+#include "../../Shared/shared_structs.h"  // defines PCB, pid_t, State
 #include "queue.h"
 
 #define STACK_SIZE 4096 // una pagina

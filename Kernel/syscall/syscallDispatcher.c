@@ -11,10 +11,12 @@
 #include <defs.h>
 #include <scheduler.h>
 #include <textModule.h>
+#include <semaphore.h>
+#include <pipe.h>
 
 
 #define CANT_REGS 19
-#define CANT_SYSCALLS 32
+#define CANT_SYSCALLS 27
 
 extern uint64_t regs[CANT_REGS];
 
@@ -34,22 +36,6 @@ static uint64_t syscall_write(uint64_t fd, char *buff, uint64_t length) {
     return length;  
 }
 
-static uint64_t syscall_beep(uint64_t freq, uint64_t ticks) {
-    play_sound(freq);
-    wait_ticks(ticks);
-    nosound();
-    return 0;
-}
-
-static uint64_t syscall_drawRectangle(Point2D* upLeft, Point2D *bottomRight, uint32_t color) {
-    return drawRectangle(upLeft->x, upLeft->y, bottomRight->y - upLeft->y + 1, bottomRight->x - upLeft->x + 1, color);
-}
-
-
-static void syscall_getRegisters(uint64_t buff[]) {
-    memcpy((void*)buff,(const void *)regs,CANT_REGS*(sizeof(void*)));
-}
-
 static uint64_t syscall_clearScreen(){
     clearText(0);
     return 0;
@@ -60,10 +46,6 @@ static uint64_t syscall_read( char* str,  uint64_t length){
         str[i] = getChar();
     }
     return length > 0 ? length : 0;
-}
-
-static uint64_t syscall_time(uint64_t mod){
-    return getTimeParam(mod);
 }
 
 static uint64_t syscall_fontSizeUp(uint64_t increase){
@@ -87,13 +69,6 @@ static uint64_t syscall_wait(uint64_t ticks){
     return ticks; // ver si tiene que ser en segundos
 }
 
-static uint64_t syscall_toggle_cursor(uint64_t a, uint64_t b, uint64_t c){
-    (void)a;(void)b;(void)c;
-    // Placeholder for toggle cursor functionality
-    return 0;
-}
-
-
 // process/syscall wrappers will be provided below via scheduler API
 
 static uint64_t syscall_allocMemory(uint64_t size) {
@@ -105,8 +80,20 @@ static uint64_t syscall_freeMemory(uint64_t address) {
     return 0;
 }
 
-static pid_t syscall_create_process(char* name, processFun function, int8_t priority, char** arg, char foreground, int stdin, int stdout){
-    return createProcess(name, function, 0, arg, priority, foreground, stdin, stdout);
+
+static inline uint64_t argCounter(char** argv) {
+    uint64_t c = 0;
+    if(argv == NULL || *argv == NULL) {
+        return 0;
+    }
+    while (argv[c] != NULL) {
+        c++;
+    }
+    return c;
+}
+
+pid_t syscall_create_process(ProcessParams * p){
+    return createProcess(p->name, (processFun)p->function, argCounter(p->arg), p->arg, p->priority, p->foreground, p->stdin, p->stdout);
 }
 
 static uint64_t syscall_exit(uint64_t ret){
@@ -129,15 +116,11 @@ pid_t syscall_block(pid_t pid){
 }
 
 static uint64_t syscall_unblock(uint64_t pid){
-    retunr unblockProcess(pid);
+    return unblockProcess(pid);
 }
 
 void syscall_yield(uint64_t a, uint64_t b, uint64_t c){
-    yield() 
-}
-
-pid_t syscall_waitPid(pid_t pid, int32_t* retValue){
-    return waitpid(pid, retValue);
+    yield();
 }
 
 static int8_t syscall_changePrio(uint64_t pid, int8_t newPrio){
@@ -170,10 +153,10 @@ int syscall_sem_open(uint8_t sem_id){
     return semOpen(sem_id);
 }
 
-// PIPES
+// PIPES 
 
-int syscall_createPipe(int* pipe_id){
-    return pipeCreate(pipe_id);
+int syscall_openPipe(uint64_t pipe_id, int mode){
+    return pipeOpen(pipe_id, mode);
 }
 
 int syscall_closePipe(int pipe_id){
@@ -184,43 +167,45 @@ int syscall_clearPipe(int pipe_id){
     return pipeClear(pipe_id);
 }
 
+// waitpid
+
+pid_t syscall_waitPid(pid_t pid, int32_t* retValue){
+    return waitpid(pid, retValue);
+}
+
 
 // Prototipos de las funciones de syscall
 uint64_t syscallDispatcher(uint64_t syscall_number, uint64_t arg1, uint64_t arg2, uint64_t arg3){
     if(syscall_number > CANT_SYSCALLS) return 0;
     syscall_fn syscalls[] = {0,
-        (syscall_fn)syscall_read,            // 1
-        (syscall_fn)syscall_write,           // 2
-        (syscall_fn)syscall_time,            // 3
-        (syscall_fn)syscall_beep,            // 4
-        (syscall_fn)syscall_drawRectangle,   // 5
-        (syscall_fn)syscall_getRegisters,    // 6
-        (syscall_fn)syscall_clearScreen,     // 7
-        (syscall_fn)syscall_fontSizeUp,      // 8
-        (syscall_fn)syscall_fontSizeDown,    // 9
-        (syscall_fn)syscall_getHeight,       // 10
-        (syscall_fn)syscall_getWidth,        // 11
-        (syscall_fn)syscall_wait,            // 12
-        (syscall_fn)syscall_toggle_cursor,   // 13
-        (syscall_fn)syscall_allocMemory,     // 14
-        (syscall_fn)syscall_freeMemory,      // 15
-        (syscall_fn)syscall_create_process,  // 16
-        (syscall_fn)syscall_exit,            // 17
-        (syscall_fn)syscall_getpid,          // 18
-        (syscall_fn)syscall_kill,            // 19
-        (syscall_fn)syscall_block,           // 20
-        (syscall_fn)syscall_unblock,         // 21
-        (syscall_fn)syscall_yield,           // 22
-        (syscall_fn)syscall_changePrio,      // 23 (name in file: syscall_changePrio)
-        (syscall_fn)syscall_waitPid,         // 24
-        (syscall_fn)syscall_getProcessInfo,  // 25 (list/get process info)
-        (syscall_fn)syscall_sem_wait,        // 26
-        (syscall_fn)syscall_sem_post,        // 27
-        (syscall_fn)syscall_sem_close,       // 28
-        (syscall_fn)syscall_sem_open,        // 29
-        (syscall_fn)syscall_createPipe,      // 30
-        (syscall_fn)syscall_closePipe,       // 31
-        (syscall_fn)syscall_clearPipe        // 32 
+        (syscall_fn)syscall_read, 
+        (syscall_fn)syscall_write, 
+        (syscall_fn)syscall_clearScreen, 
+        (syscall_fn)syscall_fontSizeUp, 
+        (syscall_fn)syscall_fontSizeDown, 
+        (syscall_fn)syscall_getHeight, 
+        (syscall_fn)syscall_getWidth, 
+        (syscall_fn)syscall_wait,
+        (syscall_fn)syscall_allocMemory,
+        (syscall_fn)syscall_freeMemory,
+        (syscall_fn)syscall_create_process,
+        (syscall_fn)syscall_getpid,
+        (syscall_fn)syscall_kill,
+        (syscall_fn)syscall_block,
+        (syscall_fn)syscall_unblock,
+        (syscall_fn)syscall_changePrio,
+        (syscall_fn)syscall_getProcessInfo,
+        // (syscall_fn)syscall_memInfo,
+        (syscall_fn)syscall_exit,
+        (syscall_fn)syscall_sem_open,
+        (syscall_fn)syscall_sem_wait,
+        (syscall_fn)syscall_sem_post,
+        (syscall_fn)syscall_sem_close,
+        (syscall_fn)syscall_yield,
+        (syscall_fn)syscall_openPipe,
+        (syscall_fn)syscall_closePipe,
+        (syscall_fn)syscall_clearPipe,
+        (syscall_fn)syscall_waitPid,
     };
     return syscalls[syscall_number](arg1, arg2, arg3);
 }

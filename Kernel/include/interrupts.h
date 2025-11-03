@@ -35,4 +35,8 @@ void picSlaveMask(uint8_t mask);
 //Termina la ejecución de la cpu.
 void haltcpu(void);
 
+// Semaforos 
+void acquire(uint8_t *lock);
+void release(uint8_t *lock);
+
 #endif /* INTERRUPS_H_ */
