@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include "../../Shared/shared_structs.h"
 
 #define BLOCK_SIZE 64 // Tamaño de bloque en bytes
 
@@ -14,6 +15,9 @@ void *allocMemory(uint64_t size);
 void freeMemory(void *address);
 int getUsedMemory(void);
 int getFreeMemory(void);
+
+void getMemoryInfo(memInfo *info);
+
 
 
 #endif

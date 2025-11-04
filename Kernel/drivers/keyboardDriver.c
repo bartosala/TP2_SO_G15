@@ -1,8 +1,15 @@
 #include <keyboardDriver.h>
+#include "../../Shared/shared_structs.h"
+#include <stdint.h>
 #include <lib.h>
+#include <scheduler.h>
+#include <textModule.h>
+#include <pipe.h>
+#include <process.h>
 
 #define BUFFER_SIZE 1000
-#define CANT_SPECIAL_KEYS 8
+#define CANT_SPECIAL_KEYS 9
+#define EOF -1
 
 #define LSHIFT_PRESS 0x2A
 #define LSHIFT_RELEASE 0xAA
@@ -15,6 +22,9 @@
 #define ESC_PRESS 0x01
 #define ALT_PRESS 0x3B
 #define CTRL_PRESS 0x1D
+#define CTRL_RELEASE 0x9D
+
+#define STDIN_FD 0
 
 extern int kb_getKey();
 
@@ -75,14 +85,13 @@ ScanCode press_keys[] = {
     {'b', 'B'},
     {'n', 'N'},
     {'m', 'M'},
-    {',', '<'}, 
-    {'.', '>'}, 
-    {'/', '?'}, 
+    {',', ';'}, 
+    {'.', ':'}, 
+    {'-', '_'}, 
     {0, 0}, 
     {'*', '*'}, 
     {0, 0}, 
     {' ', ' '}, 
-    {0, 0}, 
     {0, 0}, 
     {0, 0}, 
     {0, 0}, 
@@ -115,17 +124,14 @@ ScanCode press_keys[] = {
     {0, 0}  
 };
 
-static unsigned int specialKeys[] = {LSHIFT_PRESS, LSHIFT_RELEASE, RSHIFT_RELEASE, RSHIFT_PRESS, CAPS_PRESS, ALT_PRESS, CTRL_PRESS, ESC_PRESS};
-static char buffer[BUFFER_SIZE];
+static unsigned int specialKeys[] = {LSHIFT_PRESS, LSHIFT_RELEASE, RSHIFT_RELEASE, RSHIFT_PRESS, CAPS_PRESS, ALT_PRESS, CTRL_PRESS, CTRL_RELEASE, ESC_PRESS};
 
-unsigned int shift = 0;
-unsigned int caps = 0;
-unsigned int mayus = 0;
-unsigned int esc = 0;
-unsigned int specialKey = 0;
-
-static unsigned int current = 0;
-static unsigned int next = 0;
+static char shift = 0;
+static char caps = 0;
+static char mayus = 0;
+//static char esc = 0;
+static char specialKey = 0;
+static char ctrlPressed = 0;
 
 static char isAlpha(unsigned int key){
     return press_keys[key].ascii >= 'a' && press_keys[key].ascii <= 'z';
@@ -144,8 +150,11 @@ static void handleSpecialKeys(unsigned int key){
         case CAPS_PRESS:
             caps = !caps;
             break;
-        case ESC_PRESS:
-            getRegisters();
+        case CTRL_PRESS:
+            ctrlPressed = 1;
+            break;
+        case CTRL_RELEASE:
+            ctrlPressed = 0;
             break;
         default:
             break; 
@@ -163,9 +172,8 @@ static void checkSpecialKeys(unsigned int key){
 }
 
 static void addToBuffer(unsigned int key){
-    current %= BUFFER_SIZE;
-    next %= BUFFER_SIZE;
-    buffer[current++] = key;
+    char c = (char)key;
+    pipeWrite(0, &c, 1);
 }
 
 int bufferWrite(){
@@ -174,27 +182,44 @@ int bufferWrite(){
 
     checkSpecialKeys(c);
 
-    if(!specialKey && c <= F12_PRESS){  
-        mayus = (caps && !shift) || (!caps && shift);
+    if(!specialKey && c < F12_PRESS){  
+        if(ctrlPressed && press_keys[c].ascii == 'c'){
+            kill(getForegroundPid(),1); // CTRL + C mata al proceso actual
+            printStr("^C", 0x00FFFFFF);
+            lineFeed();
+            return 0;
+        }
+        if(ctrlPressed && press_keys[c].ascii == 'd'){
+            addToBuffer(EOF); // Add EOF character to buffer
+            printStr("^D", 0x00FFFFFF);
+            lineFeed();
+            return 0;
+        }
+        mayus = caps ^ shift;
         if( (isAlpha(c) && mayus) || (!isAlpha(c) && shift) ){
             addToBuffer(press_keys[c].shift_ascii);
         } else {
             addToBuffer(press_keys[c].ascii);
         }
         return 1;
-    }
+    } 
     return 0;
 }
 
 char getChar(){
-    if(next < current){
-        return buffer[next++];
+    int stdin_fd = getCurrentStdin();
+    if(stdin_fd == -1) {
+        return 0;
     }
-    return 0;
+    
+    char c = 0;
+    pipeRead(stdin_fd, &c, 1);
+    return c;
 }
 
 void clear_buffer(){
-    current = 0;
-    next = 0;
-    buffer[0] = 0;
-}
+    int stdin_fd = getCurrentStdin();
+    if(stdin_fd != -1) {
+        pipeClear(stdin_fd);
+    }
+}   

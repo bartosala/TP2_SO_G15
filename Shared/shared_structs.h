@@ -5,6 +5,13 @@
 
 #define NAME_MAX_LENGTH 32
 
+typedef struct memInfo {
+    uint64_t total;
+    uint64_t used;
+    uint64_t free;
+} memInfo;
+
+
 typedef enum {
     READY,
     RUNNING,

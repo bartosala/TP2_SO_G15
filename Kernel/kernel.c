@@ -8,10 +8,13 @@
 #include <videoDriver.h>
 #include <textModule.h>
 #include <keyboardDriver.h>
-#include "memoryManager.h"
+#include <memoryManager.h>
 #include <defs.h>
-
-#define WHITE 0x00FFFFFF
+#include <process.h>
+#include <scheduler.h>
+#include <interrupts.h>
+#include <pipe.h>
+#include <semaphore.h>
 
 extern uint8_t text;
 extern uint8_t rodata;
@@ -22,8 +25,13 @@ extern uint8_t endOfKernel;
 
 static const uint64_t PageSize = 0x1000;
 
-static void * const sampleCodeModuleAddress = (void*)0x400000;
-static void * const sampleDataModuleAddress = (void*)0x500000;
+#define SAMPLE_CODE_MODULE_ADDR    0x400000UL
+#define SAMPLE_DATA_MODULE_ADDR    0x500000UL
+
+
+
+static void * const sampleCodeModuleAddress = (void*)SAMPLE_CODE_MODULE_ADDR;
+static void * const sampleDataModuleAddress = (void*)SAMPLE_DATA_MODULE_ADDR;
 
 typedef int (*EntryPoint)();
 
@@ -62,6 +70,45 @@ void printSlow(char * str, uint32_t color, uint64_t pause){
 	}
 }
 
+uint64_t idle(uint64_t argc, char **argv) {
+	while(1){
+		_hlt();
+	}
+	return 0xdeadbeef;
+}
+
+#define WHITE 0x00FFFFFF
+#define RED 0x000000FF
+
+int main(){	
+	_cli();
+	fontSizeUp(2);
+	printStr(" TP 2 SO \n", WHITE);
+	fontSizeDown(2);
+
+	// MEMORY MANAGER
+	createMemoryManager((void*)HEAP_START_ADDRESS, HEAP_SIZE);
+	startScheduler(idle);
+	if(createSemaphoresManager() == NULL) {
+		printStr("Error initializing semaphore manager\n", RED);
+		return -1;
+	}
+	createProcess("shell", (processFun) sampleCodeModuleAddress, 0, NULL, 0, 1, 0, 1);
+	load_idt();
+	clear_buffer();
+	_sti();
+	while (1) {
+		_hlt();
+	}
+
+	printStr("DEATH ZONE\n", RED);
+	// This point should never be reached
+	return 0;
+}
+
+
+
+/*
 int main()
 {	
 	load_idt();
@@ -81,3 +128,4 @@ int main()
 
 
 
+*/

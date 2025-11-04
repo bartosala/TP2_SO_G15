@@ -42,7 +42,6 @@ ProcessManagerADT createProcessManager() {
     if(processManager->blockedQueueBySem == NULL) {
         freeQueue(processManager->readyQueue);
         freeQueue(processManager->blockedQueue);
-        freeQueue(processManager->zombieQueue); // nescesario ? creo que no zombie va despues 
         freeMemory(processManager);
         return NULL;
     }
@@ -50,11 +49,10 @@ ProcessManagerADT createProcessManager() {
     if(processManager->zombieQueue == NULL) {
         freeQueue(processManager->readyQueue);
         freeQueue(processManager->blockedQueue);
-        freeQueue(processManager->blockedQueueBySem);
+        freeQueue(processManager->zombieQueue);
         freeMemory(processManager); // Raro freeMemoryMemory
         return NULL;
     }
-    processManager->idleProcess = NULL;
     return processManager;
 }
 
@@ -81,7 +79,6 @@ void addProcess(ProcessManagerADT pm, PCB* process) {
 
     if(pm->currentProcess == NULL  || pm->currentProcess == pm->idleProcess) {
         pm->currentProcess = process;
-        return;
     }
     enqueue(pm->readyQueue, process);
 }
@@ -116,7 +113,7 @@ static PCB* switchProcessFromQueues(QueueADT queueFrom, QueueADT queueTo, pid_t 
         return NULL;
     }
     // Lo agrego a la cola destino
-    enqueue(queueTo, process); // ver 
+    enqueue(queueTo, process); // ver   
     return process;
 }
 
@@ -259,7 +256,7 @@ PCB* getNextReadyProcess(ProcessManagerADT pm) {
         return NULL;
     }
 
-    if(enqueue(pm->readyQueue, nextProcess) == 0) {
+    if(enqueue(pm->readyQueue, nextProcess) != 0) {
         return NULL;
     }
 
@@ -288,12 +285,10 @@ PCB* getCurrentProcess(ProcessManagerADT pm) {
 
 
 void setIdleProcess(ProcessManagerADT pm, PCB* idleProcess) {
-    if(pm == NULL || idleProcess == NULL) {
-        return;
+    if(pm != NULL) {
+        pm->idleProcess = idleProcess;
+        pm->currentProcess = idleProcess;
     }
-
-    pm->idleProcess = idleProcess;
-    pm->currentProcess = idleProcess;
 }
 
 void foregroundProcessSet(ProcessManagerADT pm, PCB* process) {

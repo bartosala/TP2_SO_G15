@@ -2,6 +2,7 @@
 #include "memoryManager.h"
 #include <defs.h>
 #include <stdint.h>
+#include "../../Shared/shared_structs.h"
 
 enum { FREE, USED, START_BOUNDARY, END_BOUNDARY, SINGLE_BLOCK };
 
@@ -101,6 +102,10 @@ void *allocMemory(uint64_t size) {
     }
 
     return markGroupAsUsed(blocksNeeded, blockIndex);
+}
+
+void getMemoryInfo(memInfo * info){
+    return;
 }
 
 void freeMemory(void *address) {

@@ -17,7 +17,7 @@
 
 #define SHELL_PID 1
 
-#define TIME_QUANTUM 3
+#define TIME_QUANTUM 10 // para debugear 
 
 #define MAX_PROCESS_NAME_LENGTH 32
 
@@ -27,10 +27,10 @@ static pid_t nextPid = 0;
 static uint64_t time_quantum = 0;
 
 // Function prototypes
-static PCB * createProcessOnPCB(char *name, processFun function, uint64_t argc, char **arg, int8_t priority, char foreground, int stdin, int stdout);
+static PCB * createProcessOnPCB(char *name, processFun function, uint64_t argc, char **arg, uint8_t priority, char foreground, int stdin, int stdout);
 static void wakeUpWaitingParent(pid_t parentPid, pid_t childPid);
 
-void startSchedueler(processFun idle){
+void startScheduler(processFun idle){
     createPipeManager();
     
     ProcessManagerADT pm = createProcessManager();
@@ -39,13 +39,13 @@ void startSchedueler(processFun idle){
     processManager = pm;
 }
 
-pid_t createProcess(char* name, processFun function, uint64_t argc, char **arg, int8_t priority, char foreground, int stdin, int stdout) {
+pid_t createProcess(char* name, processFun function, uint64_t argc, char **arg, uint8_t priority, char foreground, int stdin, int stdout) {
     PCB * newProcess = createProcessOnPCB(name, function, argc, arg, priority, foreground, stdin, stdout);
     return newProcess ? newProcess->pid : -1;
 }
 
-static PCB * createProcessOnPCB(char *name, processFun function, uint64_t argc, char **arg, int8_t priority, char foreground, int stdin, int stdout) {
-    if(name == NULL || function == NULL || priority < MIN_PRIORITY || priority > MAX_PRIORITY ) {
+static PCB * createProcessOnPCB(char *name, processFun function, uint64_t argc, char **arg, uint8_t priority, char foreground, int stdin, int stdout) {
+    if(name == NULL || function == NULL ||(argc > 0 && arg == NULL)) {
         return NULL;
     }
 
@@ -77,13 +77,6 @@ static PCB * createProcessOnPCB(char *name, processFun function, uint64_t argc, 
         return NULL;
     }
     
-
-
-    if(processManager == NULL) {
-        freeMemory(newProcess);
-        return NULL;
-    }
-
     if(newProcess->pid > 1){
         if(!foreground && !stdin){
             newProcess->stdout = stdout;
@@ -110,7 +103,7 @@ static PCB * createProcessOnPCB(char *name, processFun function, uint64_t argc, 
     return newProcess;
 }
 
-pid_t getForegrounfdPid() {
+pid_t getForegroundPid() {
     PCB* fgProcess = getForegroundProcess(processManager);
     return fgProcess ? fgProcess->pid : -1;
 }
@@ -124,7 +117,7 @@ uint64_t schedule(uint64_t rsp) {
     static int firstCall = 1;
     PCB* currentProcess = getCurrentProcess(processManager);
     
-    if(time_quantum > 0 && currentProcess->state == RUNNING && !isIdleProcess(processManager, currentProcess->pid)) {
+    if(time_quantum > 0 && currentProcess->state == RUNNING) {
         time_quantum--;
         return rsp;
     }

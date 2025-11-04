@@ -1,6 +1,6 @@
 /*
  * IRQ dispatcher: routes IRQ numbers to appropriate handlers.
- */
+ 
 #include <time.h>
 #include <stdint.h>
 #include <keyboardDriver.h>
@@ -31,3 +31,4 @@ void int_20(){
 void int_21(){
 	bufferWrite();
 }
+	*/

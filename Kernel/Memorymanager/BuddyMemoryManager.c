@@ -4,6 +4,7 @@
 #include "memoryManager.h"
 #include <defs.h>
 #include <textModule.h>
+#include "../../Shared/shared_structs.h"
 
 // Match reference implementation - use defines and uint8_t
 #define FREE 0
@@ -65,6 +66,10 @@ void createMemoryManager(void *start, uint64_t size) {
     for (uint64_t i = 0; i < NODES; i++) {
         memoryManager->tree[i].use = FREE;
     }
+}
+
+void getMemoryInfo(memInfo * info){
+    return;
 }
 
 void *allocMemory(uint64_t size) {

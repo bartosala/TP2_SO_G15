@@ -15,14 +15,12 @@ GLOBAL _irq80Handler
 
 GLOBAL _exception0Handler
 GLOBAL _exception6Handler
-GLOBAL rsp_aux
-EXTERN irqDispatcher
+
 EXTERN exceptionDispatcher
 EXTERN syscallDispatcher
-EXTERN getRegisters
+EXTERN schedule
 EXTERN timer_handler
 EXTERN bufferWrite
-EXTERN schedule
 
 SECTION .text
 
@@ -64,35 +62,14 @@ SECTION .text
 	pop r15
 %endmacro
 
-%macro irqHandlerMaster 1
-	pushState
-	mov [rsp_aux], rsp
-	mov rdi, %1 ; pasaje de parametro
-	call irqDispatcher
-
-	mov al, 20h
-	out 20h, al ; EOI
-
-
-	popState
-	iretq
-%endmacro
-
 %macro exceptionHandler 1
 	pushState
-	mov [rsp_aux], rsp
-	call getRegisters
 	
 	mov rdi, %1 			; pasaje de parametro de la excepcion
 	call exceptionDispatcher
 
 	popState
 	iretq
-%endmacro
-
-%macro EOI 0
-	mov al, 20h
-	out 20h, al ; EOI
 %endmacro
 
 _hlt:
@@ -127,16 +104,16 @@ picSlaveMask:
 
 
 ;8254 Timer (Timer Tick)
-_irq00Handler: ; interesting_handler de la práctica
+_irq00Handler: ; basado en "interesting_handler de la práctica"
 	pushState
 	call timer_handler
-
+	
 	mov rdi, rsp
 	call schedule ; Llama al scheduler
-	mov rsp, rax 
-
-	EOI
-
+	mov rsp, rax
+	mov al, 20h
+	out 20h, al ; EOI
+	
 	popState
 	iretq
 
@@ -146,26 +123,12 @@ _irq01Handler:
 
 	call bufferWrite
 
-	EOI
+	mov al, 20h
+	out 20h, al ; EOI
 
 	popState
 	iretq
 
-;Cascade pic never called
-_irq02Handler:
-	irqHandlerMaster 2
-
-;Serial Port 2 and 4
-_irq03Handler:
-	irqHandlerMaster 3
-
-;Serial Port 1 and 3
-_irq04Handler:
-	irqHandlerMaster 4
-
-;USB
-_irq05Handler:
-	irqHandlerMaster 5
 
 _irq80Handler:
 	push rbp ; registros a preservar
@@ -202,4 +165,3 @@ haltcpu:
 
 SECTION .bss
 	aux resq 1
-	rsp_aux resq 1

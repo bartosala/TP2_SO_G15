@@ -17,7 +17,7 @@ uint64_t scheduleNext(uint64_t rsp);
  * @brief Initializes the scheduler with an idle process
  * @param idle Function pointer to idle process
  */
-void startSchedueler(processFun idle);
+void startScheduler(processFun idle);
 
 /**
  * @brief Creates a new process
@@ -29,7 +29,7 @@ void startSchedueler(processFun idle);
  * @param foreground Whether process is foreground (1) or background (0)
  * @return pid_t Process ID or -1 on failure
  */
-pid_t createProcess(char* name, processFun function, uint64_t argc, char **arg, int8_t priority, char foreground, int stdin, int stdout);
+pid_t createProcess(char* name, processFun function, uint64_t argc, char **arg, uint8_t priority, char foreground, int stdin, int stdout);
 
 /**
  * @brief Gets the current process ID

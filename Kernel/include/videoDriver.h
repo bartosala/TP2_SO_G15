@@ -13,6 +13,9 @@ int drawRectangle(uint64_t x, uint64_t y, uint64_t vLength, uint64_t hLength, ui
 void penUp();
 void penDown();
 
+uint8_t * getFrameBuffer();
+uint16_t getPitch();
+
 void setColor(uint32_t color);
 
 int left(uint64_t delta);
@@ -23,7 +26,7 @@ int down(uint64_t delta);
 int setX(uint64_t newX);
 int setY(uint64_t newY);
 
-uint64_t getHeight();
-uint64_t getWidth();
+uint16_t getHeight();
+uint16_t getWidth();
 
 #endif // VIDEO_DRIVER_H

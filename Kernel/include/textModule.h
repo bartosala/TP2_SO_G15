@@ -7,7 +7,9 @@ void loadFont(char **newFont, int newFontHeight, int newFontWidth);
 
 void putChar(unsigned char c, uint32_t color);
 
-void lineFeed(int fontHeight);
+void lineFeed();
+
+void moveScreenUpIfFull();
 
 void printStr(char * s, uint32_t color);
 

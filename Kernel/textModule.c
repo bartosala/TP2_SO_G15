@@ -1,5 +1,6 @@
 #include <videoDriver.h>
 #include <textModule.h>
+#include <lib.h>
 
 #define NUM_CHARS 128
 
@@ -185,7 +186,7 @@ void deleteChar(){
 
 void putChar(unsigned char char_to_print, uint32_t color){
     if(char_to_print == '\n' || x_pos + font_width * fontSize > getWidth()){
-        lineFeed(font_height * fontSize);
+        lineFeed();
         if(char_to_print == '\n'){ // Unicamente retorno si es un ENTER, si no sigo con el flujo (imprimo el caracter)
             return;
         }
@@ -214,9 +215,10 @@ void clearText(uint32_t color){
     y_pos = 0;
 }
 
-void lineFeed(int fontHeight){
-    y_pos += fontHeight; // Avanzo para abajo veticalmente
+void lineFeed(){
+    y_pos += font_height * fontSize; 
     x_pos = 0;
+    moveScreenUpIfFull();
 }
 
 void printStr(char * s, uint32_t color){
@@ -249,6 +251,32 @@ void printInt(uint64_t value, uint32_t color){
 uint64_t fontSizeUp(uint64_t increase){
     if(fontSize + increase <= TOPE_FONT) return (fontSize += increase);
     return fontSize;
+}
+
+#define MARGIN 0 // por ahora
+
+void moveScreenUpIfFull() {
+    if (y_pos >= ( getHeight() - (font_height * fontSize) ) - MARGIN) {
+        uint8_t *frame_buffer = (uint8_t *)(uintptr_t) getFrameBuffer();
+        uint64_t pitch = getPitch(); // bytes por línea
+        uint64_t height = getHeight();
+        uint64_t scroll_amount = font_height * fontSize; // Cantidad a scroll en píxeles
+
+        // Mover el contenido hacia arriba
+        for (int y = 0; y < height - scroll_amount; y++) {
+            uint8_t *dest = frame_buffer + y * pitch;
+            uint8_t *src  = frame_buffer + (y + scroll_amount) * pitch;
+            memcpy(dest, src, pitch);
+        }
+
+        // Limpiar la última línea
+        for (int y = height - scroll_amount; y < height; y++) {
+            memset(frame_buffer + y * pitch, 0x00, pitch);
+        }
+
+        // Ajustar la posición del cursor
+        y_pos -= scroll_amount;
+    }
 }
 
 uint64_t fontSizeDown(uint64_t decrease){

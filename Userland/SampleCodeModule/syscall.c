@@ -10,8 +10,8 @@
 */
 extern int64_t syscall(uint64_t code, uint64_t param1, uint64_t param2, uint64_t param3);
 
-enum syscall_number {NULL,
-    // NONE,  POR 
+enum syscall_number {
+    NONE, 
     READ, 
     WRITE,  
     CLEAR_SCREEN, 
@@ -29,7 +29,7 @@ enum syscall_number {NULL,
     UNBLOCK,
     CHANGE_PRIORITY,
     GET_PROCESS_INFO,
-    // MEM_INFO
+    MEM_INFO,
     EXIT,
     SEM_OPEN,
     SEM_WAIT,
@@ -49,7 +49,7 @@ uint64_t syscall_read(char * buff, uint64_t len){
 uint64_t syscall_write(uint64_t fd, char * buff, uint64_t len){
     return syscall(WRITE, fd, (uint64_t)buff, len);
 }
-
+  
 uint64_t syscall_clearScreen(){
     return syscall(CLEAR_SCREEN, 0, 0, 0);
 }
@@ -123,6 +123,10 @@ int8_t syscall_changePriority(uint64_t pid, int8_t newPriority){
 
 PCB * syscall_getProccesInfo(uint64_t cantProcesses){
     return (PCB*)syscall(GET_PROCESS_INFO, (uint64_t)cantProcesses, 0, 0);
+}
+
+int64_t syscall_memInfo(memInfo *info) {
+    return syscall(MEM_INFO, (uint64_t)info, 0, 0);
 }
 
 int64_t syscall_exit() {
