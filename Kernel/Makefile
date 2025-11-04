@@ -5,11 +5,13 @@ KERNEL=kernel.bin
 # Filter memory manager source based on MM flag
 ifeq ($(MM),BUDDY)
     MM_SOURCE=Memorymanager/BuddyMemoryManager.c
+    MM_FLAG=BUDDY
 else
     MM_SOURCE=Memorymanager/bitmapMemoryManager.c
+    MM_FLAG=BITMAP
 endif
 
-SOURCES=$(wildcard *.c) $(MM_SOURCE) $(wildcard interruptions/*.c) $(wildcard drivers/*.c) $(wildcard processes/*.c) $(wildcard syscall/*.c) $(wildcard semaphores/*.c) $(wildcard pipes/*.c)
+SOURCES=$(wildcard *.c) $(MM_SOURCE) $(wildcard interrupts/*.c) $(wildcard drivers/*.c) $(wildcard processes/*.c) $(wildcard syscall/*.c) $(wildcard semaphores/*.c) $(wildcard pipes/*.c)
 SOURCES_ASM=$(wildcard asm/*.asm)
 OBJECTS=$(SOURCES:.c=.o)
 OBJECTS_ASM=$(SOURCES_ASM:.asm=.o)
@@ -26,7 +28,7 @@ $(KERNEL): $(LOADEROBJECT) $(OBJECTS) $(STATICLIBS) $(OBJECTS_ASM)
 
 
 %.o: %.c
-	$(GCC) $(GCCFLAGS) $(MM:%=-D%) -I./include -c $< -o $@
+	$(GCC) $(GCCFLAGS) -D$(MM_FLAG) -I./include -c $< -o $@
 
 %.o : %.asm
 	$(ASM) $(ASMFLAGS) $< -o $@

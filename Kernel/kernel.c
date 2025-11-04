@@ -101,8 +101,6 @@ int main(){
 		_hlt();
 	}
 
-	printStr("DEATH ZONE\n", RED);
-	// This point should never be reached
 	return 0;
 }
 
