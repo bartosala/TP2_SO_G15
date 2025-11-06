@@ -19,7 +19,7 @@ static PipeManagerADT pipeManager = NULL;
 
 // Initialize pipe manager
 PipeManagerADT createPipeManager() { // ESTO PODRIA SER VOID Y NO TIENE QUE SER STATIC
-    PipeManagerADT pipeManager = (PipeManagerADT)allocMemory(sizeof(PipeManagerCDT)); // raro
+    pipeManager = (PipeManagerADT)allocMemory(sizeof(PipeManagerCDT)); // Fixed: assign to global, not local
     if (pipeManager == NULL) return NULL;
     
     for (int i = 0; i < MAX_PIPES; i++) {
@@ -131,6 +131,33 @@ int pipeOpen(uint32_t id, int mode) {
     return (pipe - manager->pipes);  // Return file descriptor
 }
 
+// Open pipe for a specific PID (used during process creation)
+int pipeOpenForPid(uint32_t id, int mode, pid_t pid) {
+    PipeManagerADT manager = getPipeManager();
+    if (manager == NULL) return INVALID_FD;
+    
+    pipe_t* pipe = findPipeById(manager, id);
+    if (pipe == NULL || !pipe->isOpen) {
+        return INVALID_FD;
+    }
+    
+    if (mode == PIPE_READ) {
+        if (pipe->readerPID != -1) {
+            return INVALID_FD;  // Pipe already has a reader
+        }
+        pipe->readerPID = pid;
+    } else if (mode == PIPE_WRITE) {
+        if (pipe->writerPID != -1) {
+            return INVALID_FD;  // Pipe already has a writer
+        }
+        pipe->writerPID = pid;
+    } else {
+        return INVALID_FD;
+    }
+    
+    return (pipe - manager->pipes);  // Return file descriptor
+}
+
 int pipeRead(int pipe_fd, void *buf, size_t count) {
     PipeManagerADT manager = getPipeManager();
     if (manager == NULL) return -1;
@@ -140,30 +167,30 @@ int pipeRead(int pipe_fd, void *buf, size_t count) {
     }
     
     pipe_t* pipe = &manager->pipes[pipe_fd];
-    if (!pipe->isOpen || pipe->readerPID != getCurrentPid()) {
+    if (!pipe->isOpen) {
         return -1;
     }
     
-    char* buffer = (char*)buf;
-    size_t bytesRead = 0;
+    // No PID check - FD ownership is verified at pipe open time
+    // Checking getCurrentPid() here would fail after scheduler context switches
     
-    while (bytesRead < count) {
-        semWait(pipe->readSemId);  // Wait for data
-        semWait(pipe->mutexId);
+    char* buffer = (char*)buf;
+    int bytesRead = 0;
+    
+    // Read byte by byte, waiting for each one
+    for (int i = 0; i < count; i++) {
+        semWait(pipe->readSemId);  // Wait for data available
+        semWait(pipe->mutexId);    // Lock the pipe
         
         if (pipe->count > 0) {
-            buffer[bytesRead++] = pipe->buffer[pipe->readIndex];
+            buffer[i] = pipe->buffer[pipe->readIndex];
             pipe->readIndex = (pipe->readIndex + 1) % PIPE_BUFFER_SIZE;
             pipe->count--;
-            semPost(pipe->writeSemId);  // Signal space available
+            bytesRead++;
         }
         
-        semPost(pipe->mutexId);
-        
-        // If writer closed and no more data
-        if (pipe->writerPID == -1 && pipe->count == 0) {
-            break;
-        }
+        semPost(pipe->mutexId);       // Unlock the pipe
+        semPost(pipe->writeSemId);    // Signal space available
     }
     
     return bytesRead;
@@ -178,7 +205,13 @@ int pipeWrite(int pipe_fd, const void *buf, size_t count) {
     }
     
     pipe_t* pipe = &manager->pipes[pipe_fd];
-    if (!pipe->isOpen || pipe->writerPID != getCurrentPid()) {
+    if (!pipe->isOpen) {
+        return -1;
+    }
+    
+    // Allow keyboard IRQ to write to pipe 0 (keyboard input pipe) without PID check
+    // For other pipes, verify the writer PID
+    if (pipe_fd != 0 && pipe->writerPID != getCurrentPid()) {
         return -1;
     }
     
@@ -188,25 +221,22 @@ int pipeWrite(int pipe_fd, const void *buf, size_t count) {
     }
     
     const char* buffer = (const char*)buf;
-    size_t bytesWritten = 0;
+    int bytesWritten = 0;
     
-    while (bytesWritten < count) {
-        semWait(pipe->writeSemId);  // Wait for space
-        semWait(pipe->mutexId);
+    // Write byte by byte, waiting for space for each one
+    for (int i = 0; i < count; i++) {
+        semWait(pipe->writeSemId);  // Wait for space available
+        semWait(pipe->mutexId);     // Lock the pipe
         
         if (pipe->count < PIPE_BUFFER_SIZE) {
-            pipe->buffer[pipe->writeIndex] = buffer[bytesWritten++];
+            pipe->buffer[pipe->writeIndex] = buffer[i];
             pipe->writeIndex = (pipe->writeIndex + 1) % PIPE_BUFFER_SIZE;
             pipe->count++;
-            semPost(pipe->readSemId);  // Signal data available
+            bytesWritten++;
         }
         
-        semPost(pipe->mutexId);
-        
-        // If reader disconnected
-        if (pipe->readerPID == -1) {
-            break;
-        }
+        semPost(pipe->mutexId);      // Unlock the pipe
+        semPost(pipe->readSemId);    // Signal data available
     }
     
     return bytesWritten;

@@ -2,136 +2,443 @@
 #include <syscall.h>
 #include <stdlib.h>
 #include <testfunctions.h>
-#include <stddef.h> // Nose porqe no toma NULL desde stdlib.h
-
-// Como implemente hanlder, pongo las funciones de asm aca 
-
-
-char *months[] = {
-    "Enero",
-    "Febrero",
-    "Marzo",
-    "Abril",
-    "Mayo",
-    "Junio",
-    "Julio",
-    "Agosto",
-    "Septiembre",
-    "Octubre",
-    "Noviembre",
-    "Diciembre"
-};
+#include "../../Shared/shared_structs.h"
+#include <programs.h>
+#include <shell.h>
 
 char * help =   " Lista de comandos disponibles:\n"        
                 "    - exit: corta la ejecucion\n"
                 "    - help: muestra este menu\n"
                 "    - echo: imprime lo que le sigue a echo\n"
-                "    - size_up: aumenta tamano de fuente\n"
-                "    - size_down: decrementa tamano de fuente\n"
                 "    - clear: borra la pantalla y comienza arriba\n"
-                "    - test_mm <max>: test de acceso a memoria mapeada\n"
-                "    - test_processes <num>: test de creacion de procesos\n"
-                "    - test_prio: test de planificacion por prioridades\n"
-                "    - test_sync: test de sincronizacion\n";
+                "    - test_mm <max_memory>: test de gestion de memoria\n"
+                "    - test_processes <max_processes>: test de procesos\n"
+                "    - test_prio: test de prioridades\n"
+                "    - test_sync <iterations> <use_sem>: test de sincronizacion\n"
+                "    - ps: muestra los procesos con su informacion\n"
+                "    - memInfo: imprime estado de la memoria\n"
+                "    - loop <time>: ejecuta un bucle por el tiempo especificado\n"
+                "    - nice <pid> <new_prio>: cambia la prioridad de un proceso\n"
+                "    - wc: cuenta la cantidad de lineas del input\n"
+                "    - filter: filtra las vocales del input\n"
+                "    - cat: muestra el input tal cual se ingresa\n"
+                "    - test_malloc_free: test de malloc y free\n"
+                "    - kill <pid>: mata el proceso con el pid especificado\n"
+                "    - block <pid>: bloquea el proceso con el pid especificado\n"
+                "    - unblock <pid>: desbloquea el proceso con el pid especificado\n";
 
+// ========== HELPER FUNCTIONS ==========
 
-
-
-void help_handler(char * arg){
-    printf("\n");
-    printf(help); 
-}
-
-void echo_handler(char * arguments){
-    printf("%s\n", arguments);
-}
-
-void size_up_handler(char * arg){
-    syscall_sizeUpFont(1);
-    syscall_clearScreen();
-}
-
-void size_down_handler(char * arg){
-    syscall_sizeDownFont(1);
-    syscall_clearScreen();
-}
-
-void clear_handler(char * arg){
-    syscall_clearScreen();
-}
-
-
-void test_mm_handler(char * arg){
-    if(arg == NULL || arg[0] == 0){
-        printferror("Uso: test_mm <max>\n");
-        return;
+/**
+ * @brief Creates a simple process with no arguments
+ * @param name Process name
+ * @param function Process function
+ * @param foreground 1 for foreground, 0 for background
+ * @param stdin Standard input fd
+ * @param stdout Standard output fd
+ * @return pid on success, -1 on error
+ */
+static pid_t create_simple_process(const char *name, processFun function, char foreground, int stdin, int stdout) {
+    pid_t pid = syscall_create_process((char *)name, function, NULL, 1, foreground, stdin, stdout);
+    
+    if (pid < 0) {
+        printferror("Error al crear el proceso %s\n", name);
+        return -1;
     }
-    uint64_t max = 0;
-    // convierto a numero
-    for(int i = 0; arg[i]; i++){
-        if(arg[i] < '0' || arg[i] > '9'){
-            printf("Uso: test_mm <max>\n");
-            return;
-        }
-        max = max * 10 + (arg[i] - '0');
+    
+    return pid;
+}
+
+/**
+ * @brief Creates a process with arguments
+ * @param name Process name
+ * @param function Process function
+ * @param args Arguments array
+ * @param argc Number of arguments
+ * @param foreground 1 for foreground, 0 for background
+ * @param stdin Standard input fd
+ * @param stdout Standard output fd
+ * @return pid on success, -1 on error
+ */
+static pid_t create_process_with_args(const char *name, processFun function, char **args, int argc, char foreground, int stdin, int stdout) {
+    char **argv = malloc((argc + 1) * sizeof(char*));
+    if (argv == NULL) {
+        printferror("Error al asignar memoria para los argumentos\n");
+        return -1;
     }
-
-    if(max <= 0){
-        printf("Uso: test_mm <max>\n");
-        return;
+    
+    for (int i = 0; i < argc; i++) {
+        argv[i] = args[i];
     }
+    argv[argc] = NULL;
+    
+    pid_t pid = syscall_create_process((char *)name, function, argv, 1, foreground, stdin, stdout);
+    free(argv);
+    
+    if (pid < 0) {
+        printferror("Error al crear el proceso %s\n", name);
+        return -1;
+    }
+    
+    return pid;
+}
 
-    printf("Test de memoria con %d", max);
-
-    char *argv[] = { arg, NULL };
-    int res = test_mm(1, argv);
-    if (res == 0) {
-        printf("Test completado correctamente\n");
+/**
+ * @brief Parses arguments and creates a process with validation
+ * @param name Process name
+ * @param function Process function
+ * @param arg Raw argument string
+ * @param expected_argc Expected number of arguments
+ * @param usage Usage string to print on error
+ * @param stdin Standard input fd
+ * @param stdout Standard output fd
+ * @param use_stdin Whether process should use stdin (for pipes)
+ * @return pid on success, -1 on error
+ */
+static pid_t handle_process_with_args(const char *name, processFun function, char *arg, int expected_argc, const char *usage, int stdin, int stdout, char use_stdin) {
+    // Allocate storage for argument strings
+    char arg_storage[expected_argc > 0 ? expected_argc : 1][32];
+    char *args[expected_argc > 0 ? expected_argc : 1];
+    
+    // Point args array to the storage
+    for (int i = 0; i < (expected_argc > 0 ? expected_argc : 1); i++) {
+        args[i] = arg_storage[i];
+    }
+    
+    int bg = anal_arg(arg, args, expected_argc, 32);
+    
+    if (bg == -1) {
+        printferror("%s", usage);
+        return -1;
+    }
+    
+    char foreground = !bg;
+    pid_t pid;
+    
+    if (expected_argc == 0) {
+        pid = create_simple_process(name, function, foreground, use_stdin ? stdin : -1, stdout);
     } else {
-        printf("Test fallido con %d como codigo\n", res);
+        pid = create_process_with_args(name, function, args, expected_argc, foreground, use_stdin ? stdin : -1, stdout);
     }
+    
+    if (pid < 0) {
+        return -1;
+    }
+    
+    // Return 0 for background processes to match shell's expectation
+    return foreground ? pid : 0;
 }
 
-void test_prio_handler(char * arg){
-    // POR AHORA NO PORQUE NO ESTA ACTUALIZADO
-    return;
+/**
+ * @brief Validates a PID to ensure it's not shell or idle
+ * @param pid Process ID to check
+ * @return 0 if valid, 1 if invalid
+ */
+static char checkErrorInPid(uint64_t pid) {
+    if (pid == 1) {
+        printferror("Error: la shell no se toca\n");
+        return 1;
+    } else if(pid == 0) {
+        printferror("Error: idle no se toca\n");
+        return 1;
+    }
+    return 0;
 }
 
-void test_processes_handler(char * arg){
-    if(arg == NULL || arg[0] == 0){
-        printferror("Uso: test_processes <num>\n");
+// ========== COMMAND HANDLERS ==========
+
+void clearBuffer(){
+    syscall_clear_pipe(0);
+}
+
+uint64_t doHelp(uint64_t argc, char ** argv){
+    printf("\n%s", help);
+    return 0;
+}
+
+pid_t handle_help(char * arg, int stdin, int stdout){
+    free(arg);
+    return create_simple_process("help", (processFun)doHelp, 1, stdin, stdout);
+}
+
+uint64_t echo(int argc, char ** argv){
+    if(argc == 0){
+        return 1;
+    }
+    printf("%s\n", *argv);
+    return 0;
+}
+
+pid_t handle_echo(char * arg, int stdin, int stdout){
+    return syscall_create_process("echo", (processFun)echo, &arg, 1, 1, -1, stdout);
+}
+
+uint64_t clearScreen(int argc, char ** argv){
+    syscall_clearScreen();
+    return 0;
+}
+
+pid_t handle_clear(char * arg, int stdin, int stdout){
+    free(arg);
+    return create_simple_process("clear", (processFun)clearScreen, 1, stdin, stdout);
+}
+
+uint64_t showMemInfo(int argc, char ** argv){
+    printf("Estado de memoria:\n");
+
+    memInfo info;
+    if (syscall_memInfo(&info) == -1) {
+        printferror("Error al obtener el estado de memoria\n");
+        return 1;
+    }
+    
+    printf("Memoria total: %l bytes\n", info.total);
+    printf("Memoria usada: %l bytes\n", info.used);
+    printf("Memoria libre: %l bytes\n", info.free);
+    return 0;
+}
+
+pid_t handle_mem_info(char * arg, int stdin, int stdout) {
+    free(arg);
+    return create_simple_process("memInfo", (processFun)showMemInfo, 1, stdin, stdout);
+}
+
+pid_t handle_test_mm(char * arg, int stdin, int stdout) {
+    return handle_process_with_args(
+        "test_mm",
+        (processFun)test_mm,
+        arg,
+        1,
+        "Uso: test_mm <max_memory>\n",
+        stdin,
+        stdout,
+        0
+    );
+}
+
+pid_t handle_test_processes(char * arg, int stdin, int stdout) {
+    return handle_process_with_args(
+        "test_processes",
+        (processFun)test_processes,
+        arg,
+        1,
+        "Uso: test_processes <max_processes>\n",
+        stdin,
+        stdout,
+        0
+    );
+}
+
+pid_t handle_test_prio(char * arg, int stdin, int stdout) {
+    return handle_process_with_args(
+        "test_prio",
+        (processFun)test_prio,
+        arg,
+        0,
+        "Uso: test_prio\n",
+        stdin,
+        stdout,
+        0
+    );
+}
+
+pid_t handle_test_sync(char * arg, int stdin, int stdout) {
+    return handle_process_with_args(
+        "test_sync",
+        (processFun)test_sync,
+        arg,
+        2,
+        "Uso: test_sync <iterations> <use_sem>\n  iterations: numero de iteraciones por proceso\n  use_sem: 1 para usar semaforos, 0 para no usarlos\n",
+        stdin,
+        stdout,
+        0
+    );
+}
+
+uint64_t processInfo(uint64_t argc, char ** argv) {
+    uint64_t cantProcesses; 
+
+    PCB *processInfo = syscall_getProcessInfo(&cantProcesses);
+
+    if (cantProcesses == 0 || processInfo == NULL) {
+        printf("No se encontraron procesos.\n");
+        return -1;
+    }
+    
+    printHeader();
+    for (int i = 0; i < cantProcesses; i++) {
+        printProcessInfo(processInfo[i]);
+        printf("\n"); 
+    }
+
+    syscall_freeMemory(processInfo);
+    return 0;
+}
+
+pid_t handle_ps(char * arg, int stdin, int stdout) {
+    return handle_process_with_args(
+        "ps",
+        (processFun)processInfo,
+        arg,
+        0,
+        "Uso: ps\n",
+        stdin,
+        stdout,
+        0
+    );
+}
+
+pid_t handle_loop(char * arg, int stdin, int stdout) {
+    return handle_process_with_args(
+        "loop",
+        (processFun)loop,
+        arg,
+        1,
+        "Uso: loop <time>\n",
+        stdin,
+        stdout,
+        0
+    );
+}
+
+pid_t handle_wc(char * arg, int stdin, int stdout) {
+    return handle_process_with_args(
+        "wc",
+        (processFun)wc,
+        arg,
+        0,
+        "Uso: wc\n",
+        stdin,
+        stdout,
+        1  // uses stdin
+    );
+}
+
+pid_t handle_filter(char * arg, int stdin, int stdout) {
+    return handle_process_with_args(
+        "filter",
+        (processFun)filter,
+        arg,
+        0,
+        "Uso: filter\n",
+        stdin,
+        stdout,
+        1  // uses stdin
+    );
+}
+
+pid_t handle_cat(char * arg, int stdin, int stdout) {
+    return handle_process_with_args(
+        "cat",
+        (processFun)cat,
+        arg,
+        0,
+        "Uso: cat\n",
+        stdin,
+        stdout,
+        1  // uses stdin
+    );
+}
+
+uint64_t nice(int argc, char **argv){
+    uint64_t pid = satoi(argv[0]);
+    int8_t new_priority = satoi(argv[1]);
+    
+    if (checkErrorInPid(pid)) {
+        return 1;
+    }
+    
+    if (new_priority < 0 || new_priority > 5) {
+        printferror("Error: la prioridad debe estar entre 0 y 5\n");
+        return 1;
+    }
+    
+    if (syscall_changePrio(pid, new_priority) == -1) {
+        printferror("Error al cambiar la prioridad del proceso %l\n", pid);
+        return 1;
+    }
+    
+    printf("Prioridad del proceso %l cambiada a %d\n", pid, new_priority);
+    return 0;
+}
+
+pid_t handle_nice(char * arg, int stdin, int stdout) {
+    return handle_process_with_args(
+        "nice",
+        (processFun)nice,
+        arg,
+        2,
+        "Uso: nice <pid> <new_priority>\n",
+        stdin,
+        stdout,
+        0
+    );
+}
+
+uint64_t test_malloc_free(int argc, char** argv){
+    printf("Estado de memoria antes de malloc:\n");
+    memInfo info;
+    syscall_memInfo(&info);
+    printf("Usada: %l, Libre: %l\n", info.used, info.free);
+
+    uint64_t size = 1000;
+    void *ptr = syscall_allocMemory(size);
+    if (!ptr) {
+        printferror("Error al reservar memoria\n");
+        return 1;
+    }
+    printf("Estado de memoria despues de malloc:\n");
+    syscall_memInfo(&info);
+    printf("Usada: %l, Libre: %l\n", info.used, info.free);
+
+    syscall_freeMemory(ptr);
+
+    printf("Estado de memoria despues de free:\n");
+    syscall_memInfo(&info);
+    printf("Usada: %l, Libre: %l\n", info.used, info.free);
+    return 0;
+}
+
+pid_t handle_test_malloc_free(char *arg, int stdin, int stdout) {
+    free(arg);
+    return create_simple_process("test_malloc_free", (processFun)test_malloc_free, 1, -1, stdout);
+}
+
+void kill(char * arg){
+    uint64_t pid = satoi(arg);
+    if(checkErrorInPid(pid)) {
         return;
     }
-    uint64_t num = 0;
-    // convierto a numero
-    for(int i = 0; arg[i]; i++){
-        if(arg[i] < '0' || arg[i] > '9'){
-            printf("Uso: test_processes <num>\n");
-            return;
-        }
-        num = num * 10 + (arg[i] - '0');
-    }
 
-    if(num <= 0){
-        printf("Uso: test_processes <num>\n");
-        return;
-    }
-
-    printf("Test de procesos con %d como maximo", num);
-
-    char *argv[] = { arg, NULL };
-    int res = test_processes(1, argv);
-    if (res == 0) {
-        printf("Test completado correctamente\n");
+    if (syscall_kill(pid) == -1) {
+        printferror("Error al matar el proceso %l\n", pid);
     } else {
-        printf("Test fallido con %d como codigo\n", res);
+        printf("Proceso %l terminado correctamente\n", pid);
     }
 }
 
-void test_sync_handler(char * arg){
-    // hacer 
-    return;
+void block(char * arg){
+    uint64_t pid = satoi(arg);
+    if(checkErrorInPid(pid)) {
+        return;
+    }
+
+    if (syscall_block(pid) == -1) {
+        printferror("Error al bloquear el proceso %l\n", pid);
+    } else {
+        printf("Proceso %l bloqueado correctamente\n", pid);
+    }
 }
 
+void unblock(char * arg){
+    uint64_t pid = satoi(arg);
+    if(checkErrorInPid(pid)) {
+        return;
+    }
 
-
+    if (syscall_unblock(pid) == -1) {
+        printferror("Error al desbloquear el proceso %l\n", pid);
+    } else {
+        printf("Proceso %l desbloqueado correctamente\n", pid);
+    }
+}

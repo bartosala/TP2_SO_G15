@@ -1,25 +1,44 @@
-#ifndef SHELLFUNCTIONS_H
-#define SHELLFUNCTIONS_H
+#ifndef SHELL_FUNCTIONS_H
+#define SHELL_FUNCTIONS_H
 
 #include <stdarg.h>
+#include "../../../Shared/shared_structs.h"
+#include <stdint.h>
+#include <testfunctions.h>
 
-void showTime();
-void showRegisters();
+typedef struct command{
+    int instruction;
+    char * arguments;
+    char foreground; // 1 si es foreground, 0 si es background
+} command;
 
-// handler functions
-void help_handler(char *arg);
-void time_handler(char *arg);
-void registers_handler(char *arg);
-void echo_handler(char *arg);
-void size_up_handler(char *arg);
-void size_down_handler(char *arg);
-void test_div_0_handler(char *arg);
-void test_invalid_opcode_handler(char *arg);
-void clear_handler(char *arg);
-// test catedra
-void test_mm_handler(char *arg);
-void test_processes_handler(char *arg);
-void test_prio_handler(char *arg);
-void test_sync_handler(char *arg);
+typedef struct pipecmd{
+    command cmd1;
+    command cmd2;
+} pipeCmd;
 
-#endif //SHELLFUNCTIONS_H
+void clearBuffer();
+
+pid_t handle_help(char * arg, int sdtin, int stdout);
+pid_t handle_echo(char * arg, int sdtin, int stdout);
+pid_t handle_clear(char * arg, int sdtin, int stdout);
+pid_t handle_test_mm(char * arg, int sdtin, int stdout);
+pid_t handle_test_processes(char * arg, int sdtin, int stdout);
+pid_t handle_test_prio(char * arg, int sdtin, int stdout);
+pid_t handle_test_sync(char * arg, int sdtin, int stdout);
+pid_t handle_ps(char * arg, int sdtin, int stdout);
+pid_t handle_mem_info(char * arg, int sdtin, int stdout);
+pid_t handle_loop(char * arg, int sdtin, int stdout);
+pid_t handle_pid_info(char * arg, int sdtin, int stdout);
+pid_t handle_nice(char * arg, int sdtin, int stdout);
+pid_t handle_wc(char * arg, int sdtin, int stdout);
+pid_t handle_filter(char * arg, int sdtin, int stdout);
+pid_t handle_cat(char * arg, int sdtin, int stdout);
+pid_t handle_test_malloc_free(char * arg, int sdtin, int stdout);
+pid_t handle_kill(char * arg, int sdtin, int stdout);
+pid_t handle_block(char * arg, int sdtin, int stdout);
+void kill(char * arg);
+void block(char * arg);
+void unblock(char * arg);
+
+#endif //SHELL_FUNCTIONS_H

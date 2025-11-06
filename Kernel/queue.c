@@ -1,6 +1,7 @@
 // Funciones y estructuras relacionadas con la gestión de colas
 #include <queue.h>
 #include <memoryManager.h>
+#include <stddef.h>
 
 typedef struct Node {
     void* data;

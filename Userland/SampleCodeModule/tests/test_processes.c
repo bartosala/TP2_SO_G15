@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <syscall.h>
 #include "test_util.h"
 #include <testfunctions.h>
@@ -81,5 +80,6 @@ int64_t test_processes(uint64_t argc, char *argv[]) {
     }
   }
   printf("test_processes: ALL PROCESSES KILLED SUCCESSFULLY\n");
+  syscall_exit();
   return 0;
 }

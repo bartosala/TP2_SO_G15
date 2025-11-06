@@ -79,16 +79,18 @@ static uint64_t syscall_read( char* str,  uint64_t length){
     */
 
 static uint64_t syscall_read(uint64_t fd, char* str,  uint64_t length){
+    int actual_fd = fd;
+    
     if(fd >= 3 + MAX_PIPES) {
         return -1; // error
     }
     if(fd == 0){ // stdin
-        fd = getCurrentStdin();
-        if( fd == -1) {
+        actual_fd = getCurrentStdin();
+        if(actual_fd == -1) {
             return -1; // error
         }
     }
-    return pipeRead(fd, str, length);
+    return pipeRead(actual_fd, str, length);
 }
 
 static uint64_t syscall_fontSizeUp(uint64_t increase){
@@ -212,8 +214,29 @@ int syscall_sem_open(uint8_t sem_id){
 
 // PIPES 
 
-int syscall_openPipe(uint64_t pipe_id, int mode){
-    return pipeOpen(pipe_id, mode);
+int syscall_openPipe(){
+    // Create a new pipe with auto-generated ID
+    static uint32_t nextPipeId = 1;  // Start from 1 (0 is reserved for keyboard)
+    uint32_t pipeId = nextPipeId++;
+    
+    int pipe_fd = pipeCreate(pipeId);
+    if (pipe_fd < 0) return -1;
+    
+    // Open pipe for current process (both read and write by default)
+    int read_fd = pipeOpen(pipeId, PIPE_READ);
+    if (read_fd < 0) {
+        pipeClose(pipe_fd);
+        return -1;
+    }
+    
+    int write_fd = pipeOpen(pipeId, PIPE_WRITE);
+    if (write_fd < 0) {
+        pipeClose(read_fd);
+        return -1;
+    }
+    
+    // Return the pipe ID so it can be used for reading and writing
+    return pipeId;
 }
 
 int syscall_closePipe(int pipe_id){

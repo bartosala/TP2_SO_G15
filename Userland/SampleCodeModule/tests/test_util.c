@@ -1,9 +1,9 @@
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <syscall.h>
 #include "test_util.h"
 #include <testfunctions.h>
+#include <stddef.h>
 
 // Random
 static uint32_t m_z = 362436069;
@@ -38,29 +38,6 @@ void *my_memset(void *final, int mem, uint32_t c) {
     *p++ = (unsigned char)mem;
   }
   return final;
-}
-
-// Parameters
-int64_t satoi(char *str) {
-  uint64_t i = 0;
-  int64_t res = 0;
-  int8_t sign = 1;
-
-  if (!str)
-    return 0;
-
-  if (str[i] == '-') {
-    i++;
-    sign = -1;
-  }
-
-  for (; str[i] != '\0'; ++i) {
-    if (str[i] < '0' || str[i] > '9')
-      return 0;
-    res = res * 10 + str[i] - '0';
-  }
-
-  return res * sign;
 }
 
 // Dummies

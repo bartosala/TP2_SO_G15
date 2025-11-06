@@ -8,7 +8,7 @@
 #include <textModule.h>
 #include <syscall.h>
 #include <pipe.h>
-
+#include <textModule.h>
 
 
 #define IDLE_PRIORITY 6
@@ -89,7 +89,14 @@ static PCB * createProcessOnPCB(char *name, processFun function, uint64_t argc, 
 
     }
     else if(newProcess->pid == SHELL_PID){
-        newProcess->stdin = pipeCreate(0); // VER CUAL ES EL ID
+        int pipe_fd = pipeCreate(0); // Create pipe with ID 0
+        if(pipe_fd < 0){
+            freeMemory((void*)newProcess->base - STACK_SIZE);
+            freeMemory(newProcess);
+            return NULL;
+        }
+        // Open the pipe for reading using the new process's PID
+        newProcess->stdin = pipeOpenForPid(0, PIPE_READ, newProcess->pid);
         if(newProcess->stdin < 0){
             freeMemory((void*)newProcess->base - STACK_SIZE);
             freeMemory(newProcess);

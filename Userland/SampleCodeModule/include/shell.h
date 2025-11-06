@@ -1,6 +1,10 @@
 #ifndef SHELL_H
 #define SHELL_H
 
-void shell();
+#include <stdint.h>
+
+#define BUFFER_SPACE 1000
+
+uint64_t shell(uint64_t argc, char **argv);
 
 #endif //SHELL_H

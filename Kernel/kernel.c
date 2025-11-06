@@ -89,6 +89,10 @@ int main(){
 	// MEMORY MANAGER
 	createMemoryManager((void*)HEAP_START_ADDRESS, HEAP_SIZE);
 	startScheduler(idle);
+	if(createPipeManager() == NULL) {
+		printStr("Error initializing pipe manager\n", RED);
+		return -1;
+	}
 	if(createSemaphoresManager() == NULL) {
 		printStr("Error initializing semaphore manager\n", RED);
 		return -1;
@@ -103,27 +107,3 @@ int main(){
 
 	return 0;
 }
-
-
-
-/*
-int main()
-{	
-	load_idt();
-	fontSizeUp(2);
-	printStr(" TPE ARQUI \n", WHITE);
-	fontSizeDown(2);
-
-	createMemoryManager((void*)HEAP_START_ADDRESS, HEAP_SIZE);
-	setup_timer(18);
-	clear_buffer();
-	
-	((EntryPoint)sampleCodeModuleAddress)(); // Llamada al userland
-	clearScreen(0);
-	
-	return 0;
-}
-
-
-
-*/

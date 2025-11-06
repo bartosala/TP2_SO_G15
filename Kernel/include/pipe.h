@@ -36,7 +36,8 @@ typedef struct PipeManagerCDT* PipeManagerADT;
 
 PipeManagerADT createPipeManager();
 int pipeCreate(uint32_t id);               
-int pipeOpen(uint32_t id, int mode);          
+int pipeOpen(uint32_t id, int mode);
+int pipeOpenForPid(uint32_t id, int mode, pid_t pid);  // Open pipe for specific PID          
 int pipeRead(int pipe_fd, void *buf, size_t count);
 int pipeWrite(int pipe_fd, const void *buf, size_t count);
 int pipeClose(int pipe_fd);

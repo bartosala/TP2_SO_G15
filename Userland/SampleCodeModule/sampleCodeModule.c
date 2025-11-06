@@ -1,7 +1,6 @@
-/* sampleCodeModule.c */
 #include <shell.h>
 
-int main() {
-	shell();
+int main(uint64_t argc, char **argv) {
+	shell(argc, argv);
 	return 0;
 }

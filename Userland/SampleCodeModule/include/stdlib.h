@@ -3,13 +3,16 @@
 
 #include <stdint.h>
 #include <stdarg.h>
+#include <syscall.h>
+
+#define EOF -1
 
 /**
  * @brief Longitud de un string null-terminated
  * @param s string para sacarle la longitud
  *
  */
-uint64_t strlen(char * s);
+uint64_t strlen(const char * s);
 
 /**
  * @brief Imprime en pantalla un string formateado
@@ -17,7 +20,7 @@ uint64_t strlen(char * s);
  * @param ... argumentos a imprimir
  * @return cantidad de caracteres impresos
  */
-int printf(const char *format, ...);
+uint64_t printf(const char *format, ...);
 
 /**
  * @brief Imprime en pantalla un string formateado de error
@@ -25,15 +28,30 @@ int printf(const char *format, ...);
  * @param ... argumentos a imprimir
  * @return cantidad de caracteres impresos
  */
-int printferror(const char *format, ...);
+uint64_t printferror(const char *format, ...);
 
 /**
- * @brief Lee de la entrada estandar un string
- * @param buff Buffer donde poner lo leído
- * @param length cantidad de caracteres a leer (menor o igual al tamaño del buffer)
- * @return cantidad de caracteres leidos
+ * @brief Busca una subcadena en un string
+ * @param haystack string donde buscar
+ * @param needle subcadena a buscar
+ * @return puntero a la subcadena encontrada o NULL si no se encuentra
  */
-uint64_t readLine(char * buff, uint64_t length);
+char *strstr(const char *haystack, const char *needle);
+
+/**
+ * @brief Copia un string a otro
+ * @param dest string destino
+ * @param src string origen
+ */
+void strcpy(char *dest, const char *src);
+
+/**
+ * @brief Copia un string a otro
+ * @param dest string destino
+ * @param src string origen
+ * @param length cantidad de caracteres a copiar
+ */
+void strncpy(char *dest, const char *src, uint64_t length);
 
 /**
  * @brief Compara dos strings
@@ -57,6 +75,19 @@ void intToStr(int n, char * buff);
  */
 void intToHex(int n, char * buff);
 
+/**
+ * @brief Convierte un entero con signo a string (maneja números negativos)
+ * @param n entero con signo a convertir
+ * @param buff buffer donde se guardará el string
+ */
+void signedIntToStr(int n, char * buff);
+
+/**
+ * @brief Convierte un uint64_t a string
+ * @param n uint64_t a convertir
+ * @param buff buffer donde se guardará el string
+ */
+void uint64ToStr(uint64_t n, char * buff);
 
 /**
  * @brief Obtiene un carácter de la entrada estándar.
@@ -68,7 +99,6 @@ void intToHex(int n, char * buff);
  */
 char getChar();
 
-
 /**
  * @brief Genera un número entero sin signo aleatorio.
  *
@@ -79,16 +109,41 @@ char getChar();
 unsigned int randInt();
 
 /**
- * @brief Allocates memory
- * @param size Size in bytes to allocate
- * @return Pointer to allocated memory or NULL on failure
+ * @brief Reserva memoria dinámica
+ * @param size tamaño de la memoria a reservar
+ * @return puntero a la memoria reservada
  */
-void *malloc(uint64_t size);
+void * malloc(uint64_t size);
+
+int checkNumber(char *str);
 
 /**
- * @brief Frees previously allocated memory
- * @param ptr Pointer to memory to free
+ * @brief Libera memoria dinámica
+ * @param ptr puntero a la memoria a liberar
  */
 void free(void *ptr);
+
+/**
+ * @brief Convierte un string a entero
+ * @param str string a convertir
+ * @return entero convertido
+ */
+int64_t satoi(char *str);
+
+/**
+ * @brief Convierte un string a entero
+ * @param str string a convertir
+ * @return entero convertido
+ */
+int atoi(const char *str);
+
+/**
+ * @brief Convierte un entero a string
+ * @param n entero a convertir
+ * @param buff buffer donde se guardará el string
+ */
+char* itoa(int n);
+
+int checkNumber(char *str);
 
 #endif // STDLIB_H

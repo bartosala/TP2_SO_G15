@@ -8,7 +8,8 @@
         "test_util.h": "c",
         "testfunctions.h": "c",
         "lib.h": "c",
-        "pipe.h": "c"
+        "pipe.h": "c",
+        "shell.h": "c"
     },
     "C_Cpp.default.compilerPath": "/usr/bin/gcc"
 }
