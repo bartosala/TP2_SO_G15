@@ -6,7 +6,7 @@
 #include "../../Shared/shared_structs.h"
 #include <interrupts.h>
 
-#define NUM_SEMS 10
+#define NUM_SEMS 100
 
 typedef struct sem_t {
     uint8_t value;

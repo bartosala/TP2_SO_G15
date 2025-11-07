@@ -142,8 +142,8 @@ pid_t syscall_create_process(ProcessParams * p){
 }
 
 static uint64_t syscall_exit(uint64_t ret){
-    char EOF = -1;
-    syscall_write(1, &EOF, 1); // Escribir EOF en stdout
+    char char_eof = (char)0xFF;  // -1 como un byte
+    syscall_write(1, &char_eof, 1); // Escribir EOF en stdout
     kill(getCurrentPid(), ret);
     return 0;
 }
