@@ -37,10 +37,10 @@ enum syscall_number {
     SEM_POST,
     SEM_CLOSE,
     YIELD,
-    WAITPID,
     OPEN_PIPE,
     CLOSE_PIPE,
-    CLEAR_PIPE
+    CLEAR_PIPE,
+    WAITPID
 };
 
 uint64_t syscall_read(uint64_t fd, char * buff, uint64_t len){
