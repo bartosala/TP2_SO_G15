@@ -6,27 +6,6 @@
 #include <programs.h>
 #include <shell.h>
 
-char * help =   " Lista de comandos disponibles:\n"        
-                "    - exit: corta la ejecucion\n"
-                "    - help: muestra este menu\n"
-                "    - echo: imprime lo que le sigue a echo\n"
-                "    - clear: borra la pantalla y comienza arriba\n"
-                "    - test_mm <max_memory>: test de gestion de memoria\n"
-                "    - test_processes <max_processes>: test de procesos\n"
-                "    - test_prio: test de prioridades\n"
-                "    - test_sync <iterations> <use_sem>: test de sincronizacion\n"
-                "    - ps: muestra los procesos con su informacion\n"
-                "    - memInfo: imprime estado de la memoria\n"
-                "    - loop <time>: ejecuta un bucle por el tiempo especificado\n"
-                "    - nice <pid> <new_prio>: cambia la prioridad de un proceso\n"
-                "    - wc: cuenta la cantidad de lineas del input\n"
-                "    - filter: filtra las vocales del input\n"
-                "    - cat: muestra el input tal cual se ingresa\n"
-                "    - test_malloc_free: test de malloc y free\n"
-                "    - kill <pid>: mata el proceso con el pid especificado\n"
-                "    - block <pid>: bloquea el proceso con el pid especificado\n"
-                "    - unblock <pid>: desbloquea el proceso con el pid especificado\n";
-
 // ========== HELPER FUNCTIONS ==========
 
 /**
@@ -152,7 +131,30 @@ void clearBuffer(){
 }
 
 uint64_t doHelp(uint64_t argc, char ** argv){
-    printf("\n%s", help);
+    printf("\n Lista de comandos disponibles:\n");
+    printf(" - help: muestra este menu de ayuda\n");
+    printf(" - echo <texto>: imprime el texto especificado\n");
+    printf(" - clear: borra la pantalla y comienza arriba\n");
+    printf(" - exit: sale de la shell\n");
+    printf(" - memInfo: imprime el estado de la memoria\n");
+    printf(" - ps: muestra todos los procesos con su informacion\n");
+    printf(" - loop <tiempo>: imprime su PID cada tiempo especificado\n");
+    printf(" - kill <pid>: mata el proceso con el PID especificado\n");
+    printf(" - nice <pid> <prioridad>: cambia la prioridad de un proceso (0-5)\n");
+    printf(" - block <pid>: bloquea el proceso con el PID especificado\n");
+    printf(" - unblock <pid>: desbloquea el proceso con el PID especificado\n");
+    printf(" - cat: muestra el input tal cual se recibe (usa Ctrl+D para terminar)\n");
+    printf(" - wc: cuenta la cantidad de lineas del input\n");
+    printf(" - filter: filtra las vocales del input\n");
+    printf(" - <comando> | <comando>: conecta dos procesos con un pipe\n");
+    printf(" - <comando> &: ejecuta el comando en background\n");
+    printf(" - test_mm <max_memory>: test de gestion de memoria\n");
+    printf(" - test_processes <max_processes>: test de creacion y manejo de procesos\n");
+    printf(" - test_prio: test de prioridades de procesos\n");
+    printf(" - test_sync <iterations> <use_sem>: test de sincronizacion (0=sin sem, 1=con sem)\n");
+    printf(" - test_malloc_free: test de malloc y free\n");
+    printf(" - Ctrl + C: mata el proceso en foreground\n");
+    printf(" - Ctrl + D: envia EOF (fin de archivo) al proceso\n");
     return 0;
 }
 

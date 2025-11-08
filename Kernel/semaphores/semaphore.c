@@ -72,7 +72,8 @@ int8_t semWait(uint8_t sem) {
     *pid = (int)getCurrentPid();
     insertLast(semaphore->semaphores[sem].waitingProcesses, pid);
     release(&semaphore->semaphores[sem].lock);
-    yield();
+    blockProcessBySem(*pid);  // Block the process in semaphore queue
+    yield();                   // Then yield CPU
     return 0;
 }
 
@@ -87,8 +88,8 @@ int8_t semPost(uint8_t sem) {
         if (pid_ptr == NULL) break;
         removeElement(semaphore->semaphores[sem].waitingProcesses, pid_ptr);
         pid_t pid = (pid_t)(*pid_ptr);
-        /* use scheduler API to unblock the process */
-        unblockProcess(pid);
+        /* unblock the process from semaphore queue */
+        unblockProcessBySem(pid);
         /* free allocated pid storage */
         freeMemory(pid_ptr);
         break;

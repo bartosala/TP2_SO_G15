@@ -123,7 +123,8 @@ pid_t getForegroundPid() {
 }
 
 pid_t getCurrentPid() {
-    return currentPid;
+    PCB* current = getCurrentProcess(processManager);
+    return current ? current->pid : -1;
 }
 
 uint64_t schedule(uint64_t rsp){
@@ -160,7 +161,7 @@ uint64_t blockProcessBySem(pid_t pid) {
     if (blockProcessQueueBySem(processManager, pid) != 0) {
         return -1;
     }
-    if (pid == getCurrentPid()) { // si el proceso bloqueado es el actual se renuncia al cpu con interrupción 
+    if (pid == getCurrentPid()) { // si el proceso bloqueado es el actual se renuncia al cpu con interrupción
         yield(); 
     }
     return 0; 
