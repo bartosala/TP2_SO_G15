@@ -8,175 +8,171 @@
 #include <textModule.h>
 #include <syscall.h>
 #include <pipe.h>
-#include <textModule.h>
-
-
-#define IDLE_PRIORITY 6
-#define MAX_PRIORITY 5
-#define MIN_PRIORITY 0 
 
 #define SHELL_PID 1
+#define TTY 0
 
-#define TIME_QUANTUM 10 // para debugear 
+#define QUANTUM 3
+#define MAX_PRIORITY 5
+#define MIN_PRIORITY 0
+#define IDLE_PRIORITY 6
 
-#define MAX_PROCESS_NAME_LENGTH 32
+uint64_t calculateQuantum(int8_t priority) {
+    if (priority == IDLE_PRIORITY) {
+        return QUANTUM;  // Minimum quantum for idle
+    }
+    return QUANTUM * (MAX_PRIORITY - priority + 1);
+}
 
-static ProcessManagerADT processManager = NULL;
-static pid_t currentPid = -1;
-static pid_t nextPid = 0;
-static uint64_t time_quantum = 0;
+static ProcessManagerADT processManager = NULL;              
+static pid_t currentPid = -1;   
+static pid_t nextPid = 0; // PID 0 será asignado al proceso idle, PID 1 será la shell
+static uint64_t quantum = 0;    
 
-// Function prototypes
-static PCB * createProcessOnPCB(char *name, processFun function, uint64_t argc, char **arg, uint8_t priority, char foreground, int stdin, int stdout);
+static PCB* createProcessOnPCB(char* name, processFun function, uint64_t argc, char **arg, uint8_t priority, char foreground, int stdin, int stdout);
 static void wakeUpWaitingParent(pid_t parentPid, pid_t childPid);
+int getCurrentStdin();
+int getCurrentStdout();
+static int32_t reapCild(PCB* child, int32_t* retValue);
 
-void startScheduler(processFun idle){
+void startScheduler(processFun idle) {
+    // Initialize pipe manager first
     createPipeManager();
     
-    ProcessManagerADT pm = createProcessManager();
+    ProcessManagerADT list = createProcessManager();
     PCB* idleProcess = createProcessOnPCB("idle", idle, 0, NULL, IDLE_PRIORITY, 0, -1, -1);
-    setIdleProcess(pm, idleProcess);
-    processManager = pm;
+    setIdleProcess(list, idleProcess);
+    processManager = list;
 }
 
 pid_t createProcess(char* name, processFun function, uint64_t argc, char **arg, uint8_t priority, char foreground, int stdin, int stdout) {
-    PCB * newProcess = createProcessOnPCB(name, function, argc, arg, priority, foreground, stdin, stdout);
-    return newProcess ? newProcess->pid : -1;
+    PCB* process = createProcessOnPCB(name, function, argc, arg, priority, foreground, stdin, stdout);
+    if (process == NULL) {
+        return -1;
+    }
+    return process->pid;
 }
 
-static PCB * createProcessOnPCB(char *name, processFun function, uint64_t argc, char **arg, uint8_t priority, char foreground, int stdin, int stdout) {
-    if(name == NULL || function == NULL ||(argc > 0 && arg == NULL)) {
+static PCB* createProcessOnPCB(char* name, processFun function, uint64_t argc, char **arg, uint8_t priority, char foreground, int stdin, int stdout) {
+    if (name == NULL || function == NULL || (argc > 0 && arg == NULL)) {
         return NULL;
     }
 
-    PCB *newProcess = allocMemory(sizeof(PCB));
-    if(newProcess == NULL) {
-        return NULL;
+    PCB* process = allocMemory(sizeof(PCB));
+    if (process == NULL) {
+        return NULL; 
     }
 
-    if(priority > IDLE_PRIORITY) {
+    if(priority > IDLE_PRIORITY){
         priority = MAX_PRIORITY;
     }
 
-    strncpy(newProcess->name, name, MAX_PROCESS_NAME_LENGTH);
-    newProcess->pid = nextPid++;
-    newProcess->state = READY;
-    newProcess->priority = priority;
-    newProcess->foreground = foreground;
-    newProcess->stdin = stdin;
-    newProcess->stdout = stdout;
-    newProcess->waitingForPid = -1;
-    newProcess->retValue = 0;
-    newProcess->parentPid = getCurrentPid();
-    
-    newProcess->entryPoint = (uint64_t)function;
+    strncpy(process->name, name, NAME_MAX_LENGTH);
+    process->pid = nextPid++;
+    process->waitingForPid = -1;
+    process->retValue = 0;
+    process->foreground = foreground? 1 : 0; //programacion defensiva
+    process->stdin = -1;   // Initialize file descriptors to -1
+    process->stdout = -1;
+    process->state = READY;
+    process->priority = priority;
+    process->parentPid = getCurrentPid();
 
-    newProcess->rsp = setUpStackFrame(&newProcess->base, (uint64_t)function, argc, arg); 
-    if(newProcess->rsp == 0) {
-        freeMemory(newProcess);
+    process->entryPoint = (uint64_t)function;
+
+    process->rsp = setUpStackFrame(&process->base, (uint64_t)function, argc, arg);
+    if (process->rsp == 0){ // NULL
+        freeMemory(process);
         return NULL;
     }
-    
-    if(newProcess->pid > 1){
-        if(!foreground && !stdin){
-            newProcess->stdout = stdout;
-            newProcess->state = BLOCKED;
-            addToBlocked(processManager, newProcess);
-            return newProcess;
-        }
-        newProcess->stdin = stdin ? getCurrentStdin() : stdin;
-        newProcess->stdout = stdout ? getCurrentStdout() : stdout;
 
-    }
-    else if(newProcess->pid == SHELL_PID){
-        int pipe_fd = pipeCreate(0); // Create pipe with ID 0
-        if(pipe_fd < 0){
-            freeMemory((void*)newProcess->base - STACK_SIZE);
-            freeMemory(newProcess);
+    if (process->pid > 1) { // proceso usuario
+        if (!foreground && stdin == TTY) {
+            process->stdout = stdout;
+            process->state = BLOCKED;
+            addToBlocked(processManager, process);
+            return process;
+        }
+        process->stdin = (stdin == TTY) ? getCurrentStdin() : stdin;
+        process->stdout = (stdout == 1) ? getCurrentStdout() : stdout;
+
+    } else if (process->pid == SHELL_PID) {
+        int pipe_fd = pipeCreate(0);
+        if (pipe_fd < 0) {
+            freeMemory((void*)process->base - STACK_SIZE);
+            freeMemory(process);
             return NULL;
         }
-        // Open the pipe for reading using the new process's PID
-        newProcess->stdin = pipeOpenForPid(0, PIPE_READ, newProcess->pid);
-        if(newProcess->stdin < 0){
-            freeMemory((void*)newProcess->base - STACK_SIZE);
-            freeMemory(newProcess);
+        process->stdin = pipeOpenForPid(0, PIPE_READ, process->pid);
+        if (process->stdin < 0) {
+            freeMemory((void*)process->base - STACK_SIZE);
+            freeMemory(process);
             return NULL;
         }
-        newProcess->stdout = 1; // terminal
+        process->stdout = 1;
     }
-    if(priority != IDLE_PRIORITY) {
-        addProcess(processManager, newProcess);
-    }
-    return newProcess;
+        
+
+    if(priority != IDLE_PRIORITY) addProcess(processManager, process);
+    return process;
 }
 
 pid_t getForegroundPid() {
-    PCB* fgProcess = getForegroundProcess(processManager);
-    return fgProcess ? fgProcess->pid : -1;
+    PCB* current = getForegroundProcess(processManager);
+    return current ? current->pid : -1;
 }
 
 pid_t getCurrentPid() {
-    PCB * currentProcess = getCurrentProcess(processManager);
-    return currentProcess ? currentProcess->pid : -1;    
+    return currentPid;
 }
 
-uint64_t schedule(uint64_t rsp) {
-    static int firstCall = 1;
+uint64_t schedule(uint64_t rsp){
+    static int first = 1;
     PCB* currentProcess = getCurrentProcess(processManager);
     
-    if(time_quantum > 0 && currentProcess->state == RUNNING) {
-        time_quantum--;
+    if(quantum > 0 && currentProcess->state == RUNNING) {
+        quantum--;
         return rsp;
     }
+    
+    if(!first) currentProcess->rsp = rsp; else first = 0;
+    if(currentProcess->state == RUNNING) currentProcess->state = READY;
 
-    if(!firstCall){
-        currentProcess->rsp = rsp;
-    }
-    else {
-        firstCall = 0;
-    }
-    if(currentProcess->state == RUNNING){
-        currentProcess->state = READY;
-    }
-
-    PCB * nextProcess = getNextReadyProcess(processManager);
+    PCB* nextProcess = getNextReadyProcess(processManager);
 
     nextProcess->state = RUNNING;
     currentPid = nextProcess->pid;
-    time_quantum = nextProcess->priority == IDLE_PRIORITY ? TIME_QUANTUM : TIME_QUANTUM * (MAX_PRIORITY - nextProcess->priority + 1);
+    quantum = calculateQuantum(nextProcess->priority);
     return nextProcess->rsp;
 }
 
-uint64_t blockProcess(pid_t pid) {
-    if(blockProcessQueue(processManager, pid)) {
+uint64_t blockProcess (pid_t pid) {
+    if(blockProcessQueue(processManager, pid) != 0){
         return -1;
     }
-    if(pid == getCurrentPid()){
-        yield();
-    }   
-    return 0;
+    if (pid == getCurrentPid()) { // si el proceso bloqueado es el actual se renuncia al cpu con interrupción 
+        yield(); 
+    }
+    return 0; 
 }
 
 uint64_t blockProcessBySem(pid_t pid) {
-    if(blockProcessQueueBySem(processManager, pid)) {
+    if (blockProcessQueueBySem(processManager, pid) != 0) {
         return -1;
     }
-    if(pid == getCurrentPid()){
-        yield();
+    if (pid == getCurrentPid()) { // si el proceso bloqueado es el actual se renuncia al cpu con interrupción 
+        yield(); 
     }
-    return 0;
+    return 0; 
 }
 
 void yield() {
-    time_quantum = 0;
+    quantum = 0; // siguiente!!
     callTimerTick();
 }
 
-uint64_t unblockProcess(pid_t pid) {
-    if(unblockProcessQueue(processManager, pid)) {
-        return -1;
-    }
-    return 0;
+uint64_t unblockProcess(pid_t pid){
+    return unblockProcessQueue(processManager, pid);
 }
 
 uint64_t unblockProcessBySem(pid_t pid) {
@@ -184,124 +180,124 @@ uint64_t unblockProcessBySem(pid_t pid) {
 }
 
 uint64_t kill(pid_t pid, uint64_t retValue) {
-    if(pid <= 1) {
+    if (pid <= 1) { // Can't kill shell or idle
         return -1;
     }
+    //child->retValue es: (pid == getCurrentPid()) ? EXITED : KILLED; // si es el actual sale, sino es xq lo mataron
     PCB* process = killProcess(processManager, pid, retValue, ZOMBIE);
-    if(process == NULL) {
+    if(process == NULL){
         return -1;
     }
-
-    freeMemory((void*)process->base - STACK_SIZE);
+    
+    freeMemory((void*)process->base - STACK_SIZE); // libera el stack
     wakeUpWaitingParent(process->parentPid, pid);
-    if(pid == getCurrentPid()) {
-        yield();
-    }
 
-    return 0 ;
+    if (pid == currentPid) {
+        quantum = 0;
+        callTimerTick();
+    }
+    return 0;
 }
 
-/*
-This occurs for the child processes, where the entry is still needed to allow the parent
- process to read its child's exit status: once the exit status is read via the wait system call, the
-  defunct process'
- entry is removed from the process table and it is said to be "reaped".*/
-static int32_t reapCild(PCB* childProcess, int * retValue) {
+// Función auxiliar para reapear
+static int32_t reapCild(PCB* child, int32_t* retValue) {
+    if (retValue != NULL) {
+        *retValue = child->retValue;
+    }
     
-    if(childProcess == NULL || childProcess->state != ZOMBIE) { 
-        return -1;
-    }
-
-    if(retValue != NULL) {
-        *retValue = childProcess->retValue;
-    }
-    int32_t c = childProcess->pid;
-    childProcess->state = childProcess->retValue; 
-
-    removeFromZombie(processManager, childProcess->pid);
-    freeMemory((void*)childProcess->base - STACK_SIZE);
-    freeMemory(childProcess);
-    return c;
+    int32_t childPid = child->pid;
+    
+    // Limpiar el proceso
+    child->state = child->retValue; // EXITED O KILLED, MODIFICAR
+    removeFromZombie(processManager, childPid);
+    freeMemory(child);
+    
+    return childPid;
 }
 
 static void wakeUpWaitingParent(pid_t parentPid, pid_t childPid) {
-    if(parentPid < 0) {
+    if (parentPid == -1){
+        return;
+    } 
+    if(parentPid == getIdleProcess(processManager)->pid){
+        reapCild(getProcess(processManager, childPid), NULL);
+    }
+    
+    PCB* parent = getProcess(processManager, parentPid);
+    if (parent == NULL) {
         return;
     }
 
-    if(parentPid == getIdleProcess(processManager)->pid) {
-        reapCild(getProcess(processManager, childPid), NULL);
-    }
-
-
-    PCB* parentProcess = getProcess(processManager, parentPid);
-    if(parentProcess != NULL && parentProcess->waitingForPid == childPid) {
+    if (parent->state == BLOCKED && parent->waitingForPid == childPid) {
         unblockProcess(parentPid);
     }
-
-    return;
 }
-// ver esta funcion 
 int32_t waitpid(pid_t pid, int32_t* retValue) {
-    pid_t currentPid = getCurrentPid();
-    if(currentPid < 0) {
+    pid_t currentProcPid = getCurrentPid();
+    
+    // Buscar el proceso
+    PCB* target = getProcess(processManager, pid);
+    if (target == NULL) {
+        return -1; // Proceso no existe
+    }
+    
+    // Verificar que sea hijo del proceso actual o que estemos esperando por él como foreground
+    PCB* current = getProcess(processManager, currentProcPid);
+    if (current == NULL) {
         return -1;
     }
 
-    PCB * proc = getProcess(processManager, currentPid);
-    if(proc == NULL) {
+    if (target->parentPid != currentProcPid && current->waitingForPid != pid) {
         return -1;
     }
-
-    PCB * currentProcess = getCurrentProcess(processManager);
-
-    if(currentProcess == NULL) {
-        return -1;
+    
+    // Si el proceso ya está ZOMBIE, reapear inmediatamente
+    if (target->state == ZOMBIE) {
+        current->waitingForPid = -1;
+        return reapCild(target, retValue);
     }
-
-    if(proc->parentPid != currentPid && currentProcess->pid != pid) {
-        return -1;
-    }
-
-    if(proc->state == ZOMBIE) {
-        currentProcess->waitingForPid = -1;
-        return reapCild(proc, retValue);
-    }
-
-    if(proc->state < ZOMBIE) {
-        currentProcess->waitingForPid = pid;
-        currentProcess->state = BLOCKED;
-
-        if(blockProcess(currentPid)) {
-            currentProcess->waitingForPid = -1;
-            currentProcess->state = READY;
+    
+    // Si el proceso aún está corriendo, BLOQUEAR al proceso actual
+    if (target->state < ZOMBIE) {
+        // Primero marcar que estamos esperando a este proceso específico
+        current->waitingForPid = pid;
+        current->state = BLOCKED;
+        
+        // Luego bloquear al proceso actual
+        if (blockProcess(currentProcPid) != 0) {
+            current->waitingForPid = -1;
+            current->state = READY;
             return -1;
         }
-
-        proc = getProcess(processManager, currentPid);
-        if(proc == NULL) {
+        // Cuando el scheduler nos despierte, verificar de nuevo el estado
+        target = getProcess(processManager, pid);
+        if (target == NULL) {
             return -1;
         }
-
-        if(proc->state == ZOMBIE) {
-            currentProcess->waitingForPid = -1;
-            return reapCild(proc, retValue);
-        } 
+        
+        if (target->state == ZOMBIE) {
+            current->waitingForPid = -1;
+            return reapCild(target, retValue);
+        }
     }
-    return -1; // should not reach here
+    
+    return -1;
 }
 
 
-int8_t changePrio(pid_t pid, int8_t newPrio) {
-    if(newPrio < MIN_PRIORITY || newPrio > MAX_PRIORITY) {
-        return -1;
-    }
-
+int8_t changePrio(pid_t pid, int8_t newPrio){
     PCB* process = getProcess(processManager, pid);
-    if(process == NULL) {
+    if(pid <= 1){ //idle y shell>>>
         return -1;
     }
-
+    if (process == NULL) {
+        return -1;
+    }
+    if (newPrio < MIN_PRIORITY) {
+        newPrio = MIN_PRIORITY;
+    } else if (newPrio > MAX_PRIORITY) {
+        newPrio = MAX_PRIORITY;
+    }
     process->priority = newPrio;
     return newPrio;
 }
@@ -336,11 +332,7 @@ PCB* getProcessInfo(uint64_t *cantProcesses){
     return processInfo;
 }
 
-int16_t copyProcess(PCB *dest, PCB *src){
-    if (dest == NULL || src == NULL) {
-        return -1;
-    }
-    
+int16_t copyProcess(PCB *dest, PCB *src) {
     dest->pid = src->pid;
     dest->parentPid = src->parentPid;
     dest->waitingForPid = src->waitingForPid;
@@ -349,29 +341,24 @@ int16_t copyProcess(PCB *dest, PCB *src){
     dest->rsp = src->rsp;
     dest->base = src->base;
     dest->entryPoint = src->entryPoint;
+	strncpy(dest->name, src->name, NAME_MAX_LENGTH);
+	dest->name[NAME_MAX_LENGTH - 1] = '\0'; 
     dest->retValue = src->retValue;
     dest->foreground = src->foreground;
     dest->stdin = src->stdin;
     dest->stdout = src->stdout;
-    strncpy(dest->name, src->name, MAX_PROCESS_NAME_LENGTH);
-    
     return 0;
 }
 
-int getCurrentStdin(){
-    PCB * currentProcess = getCurrentProcess(processManager);
-    if(currentProcess == NULL){
-        return -1;
-    }
-    return currentProcess->stdin;
+// Add new functions to access current process information
+int getCurrentStdin() {
+    PCB* current = getCurrentProcess(processManager);
+    return current ? current->stdin : -1;
 }
 
-int getCurrentStdout(){
-    PCB * currentProcess = getCurrentProcess(processManager);
-    if(currentProcess == NULL){
-        return -1;
-    }
-    return currentProcess->stdout;
+int getCurrentStdout() {
+    PCB* current = getCurrentProcess(processManager);
+    return current ? current->stdout : -1;
 }
 
 
