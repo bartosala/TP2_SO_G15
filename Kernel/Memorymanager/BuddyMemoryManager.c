@@ -69,7 +69,14 @@ void createMemoryManager(void *start, uint64_t size) {
 }
 
 void getMemoryInfo(memInfo * info){
-    return;
+    if (info == NULL) {
+        return;
+    }
+    
+    MemoryManagerADT memoryManager = getMemoryManager();
+    info->total = memoryManager->totalMemory;
+    info->used = memoryManager->usedMemory;
+    info->free = info->total - info->used;
 }
 
 void *allocMemory(uint64_t size) {

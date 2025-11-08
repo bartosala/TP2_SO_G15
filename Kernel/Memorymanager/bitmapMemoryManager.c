@@ -105,7 +105,13 @@ void *allocMemory(uint64_t size) {
 }
 
 void getMemoryInfo(memInfo * info){
-    return;
+    if (info == NULL) {
+        return;
+    }
+    
+    info->total = memoryManager.blockQty * BLOCK_SIZE;
+    info->used = memoryManager.blocksUsed * BLOCK_SIZE;
+    info->free = info->total - info->used;
 }
 
 void freeMemory(void *address) {
