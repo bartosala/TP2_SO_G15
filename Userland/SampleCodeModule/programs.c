@@ -52,24 +52,23 @@ static int read_and_process_chars(int (*process_char)(char, void *), void *conte
 
 // ========== FORMATTING HELPERS ==========
 
-static void padRight(const char *str, int width)
+static void printHex(unsigned int value)
 {
-	printf("%s", str);
-	int len = strlen(str);
-	for (int i = len; i < width; i++)
-		printf(" ");
-}
-
-static void padInt(int value, int width)
-{
-	char buf[12];
-	intToStr(value, buf);
-	padRight(buf, width);
+	char hex[9];
+	char digits[] = "0123456789ABCDEF";
+	for (int i = 7; i >= 0; i--) {
+		hex[7 - i] = digits[(value >> (i * 4)) & 0xF];
+	}
+	hex[8] = '\0';
+	printf("%s", hex);
 }
 
 void printHeader()
 {
-	printf("\nPID  Nombre    Prioridad     Estado\n");
+	printf("\n");
+	printf("+-----+-------------+------+----------+----+\n");
+	printf("| PID | NAME        | PRIO | STATE    | FG |\n");
+	printf("+-----+-------------+------+----------+----+\n");
 }
 
 void printProcessInfo(PCB processInfo)
@@ -102,28 +101,35 @@ void printProcessInfo(PCB processInfo)
 		break;
 	}
 
-	for (int i = 0; i < LINE_WIDTH - 19; i++)
+	printf("| ");
+	if (processInfo.pid < 10)
 		printf(" ");
-	printf("RSP: 0x%x\n", (unsigned int)processInfo.rsp);
-
-	padRight(processInfo.name, COL_PROCESS); // PROCESS (11)
-	padInt(processInfo.pid, COL_PID);        // PID (4)
-	padRight(state, COL_STATE);              // STATE (10)
-	padInt(processInfo.priority, COL_PRIO);  // PRIO (4)
-
-	char *ppidStr = processInfo.parentPid == -1 ? "none" : itoa(processInfo.parentPid);
-	padRight(ppidStr, COL_PPID); // PPID (5)
-
-	char *wpidStr = processInfo.waitingForPid == -1 ? "none" : itoa(processInfo.waitingForPid);
-	padRight(wpidStr, COL_WAIT); // WAIT (5)
-
-	padRight(processInfo.foreground ? "yes" : "no", COL_FG); // FG (4)
-
-	printf("   RBP: 0x%x\n", (unsigned int)processInfo.base); // REGISTERS
-
-	for (int i = 0; i < LINE_WIDTH - 19; i++)
+	printf("%d", processInfo.pid);
+	printf("  | ");
+	printf("%s", processInfo.name);
+	for (int i = strlen(processInfo.name); i < 11; i++)
 		printf(" ");
-	printf("Entry: 0x%x\n", (unsigned int)processInfo.entryPoint);
+	printf(" | ");
+	if (processInfo.priority < 10)
+		printf(" ");
+	printf("%d", processInfo.priority);
+	printf("   | ");
+	printf("%s", state);
+	for (int i = strlen(state); i < 8; i++)
+		printf(" ");
+	printf(" | ");
+	printf("%s", processInfo.foreground ? "Y" : "N");
+	printf("  |\n");
+	
+	printf("|     | RSP: 0x");
+	printHex((unsigned int)processInfo.rsp);
+	printf("            |\n");
+	
+	printf("|     | RBP: 0x");
+	printHex((unsigned int)processInfo.base);
+	printf("            |\n");
+	
+	printf("+-----+-------------+------+----------+----+\n");
 }
 
 uint64_t readLine(char *buff, uint64_t length)

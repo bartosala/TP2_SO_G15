@@ -158,7 +158,7 @@ uint64_t doHelp(uint64_t argc, char **argv)
 	printf(" - <comando> &: ejecuta el comando en background\n");
 	printf(" - test_mm <max_memory>: test de gestion de memoria\n");
 	printf(" - test_processes <max_processes>: test de creacion y manejo de procesos\n");
-	printf(" - test_prio: test de prioridades de procesos\n");
+	printf(" - test_prio <max_value>: test de prioridades.\n");
 	printf(" - test_sync <iterations> <use_sem>: test de sincronizacion (0=sin sem, 1=con sem)\n");
 	printf(" - test_malloc_free: test de malloc y free\n");
 	printf(" - Ctrl + C: mata el proceso en foreground\n");
@@ -234,7 +234,7 @@ pid_t handle_test_processes(char *arg, int stdin, int stdout)
 
 pid_t handle_test_prio(char *arg, int stdin, int stdout)
 {
-	return handle_process_with_args("test_prio", (processFun)test_prio, arg, 0, "Uso: test_prio\n", stdin, stdout, 0);
+	return handle_process_with_args("test_prio", (processFun)test_prio, arg, 1, "Uso: test_prio <max_value>\n", stdin, stdout, 0);
 }
 
 pid_t handle_test_sync(char *arg, int stdin, int stdout)
@@ -259,7 +259,6 @@ uint64_t processInfo(uint64_t argc, char **argv)
 	printHeader();
 	for (int i = 0; i < cantProcesses; i++) {
 		printProcessInfo(processInfo[i]);
-		printf("\n");
 	}
 
 	syscall_freeMemory(processInfo);
