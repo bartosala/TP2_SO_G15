@@ -62,6 +62,11 @@ SECTION .text
 	pop r15
 %endmacro
 
+%macro sendEOI 0
+	mov al, 20h
+	out 20h, al
+%endmacro
+
 %macro exceptionHandler 1
 	pushState
 	
@@ -111,8 +116,7 @@ _irq00Handler: ; basado en "interesting_handler de la práctica"
 	mov rdi, rsp
 	call schedule ; Llama al scheduler
 	mov rsp, rax
-	mov al, 20h
-	out 20h, al ; EOI
+	sendEOI
 	
 	popState
 	iretq
@@ -123,8 +127,7 @@ _irq01Handler:
 
 	call bufferWrite
 
-	mov al, 20h
-	out 20h, al ; EOI
+	sendEOI
 
 	popState
 	iretq

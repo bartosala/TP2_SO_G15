@@ -375,7 +375,7 @@ PCB *getForegroundProcess(ProcessManagerADT pm)
 
 bool isCurrentProcessForeground(ProcessManagerADT pm, pid_t pid)
 {
-	pm && pm->foregroundProcess && pm->foregroundProcess->pid == pid;
+	return pm && pm->foregroundProcess && pm->foregroundProcess->pid == pid;
 }
 
 bool isIdleProcess(ProcessManagerADT pm, pid_t pid)
