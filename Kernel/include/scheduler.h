@@ -1,10 +1,10 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
-#include <stdint.h>
-#include <process.h>
-#include <defs.h>
 #include "../../Shared/shared_structs.h"
+#include <defs.h>
+#include <process.h>
+#include <stdint.h>
 
 /**
  * @brief Schedules the next process to run
@@ -29,7 +29,8 @@ void startScheduler(processFun idle);
  * @param foreground Whether process is foreground (1) or background (0)
  * @return pid_t Process ID or -1 on failure
  */
-pid_t createProcess(char* name, processFun function, uint64_t argc, char **arg, uint8_t priority, char foreground, int stdin, int stdout);
+pid_t createProcess(char *name, processFun function, uint64_t argc, char **arg, uint8_t priority, char foreground,
+                    int stdin, int stdout);
 
 /**
  * @brief Gets the current process ID
@@ -76,7 +77,7 @@ uint64_t kill(pid_t pid, uint64_t retValue);
  * @param retValue Pointer to store exit status
  * @return pid_t Process ID that was waited for or -1 on failure
  */
-pid_t waitpid(pid_t pid, int32_t* retValue);
+pid_t waitpid(pid_t pid, int32_t *retValue);
 
 /**
  * @brief Changes process priority
@@ -105,7 +106,7 @@ uint64_t unblockProcessBySem(pid_t pid);
  * @param cantProcesses Pointer to store process count
  * @return PCB* Array of process information or NULL on failure
  */
-PCB* getProcessInfo(uint64_t *cantProcesses);
+PCB *getProcessInfo(uint64_t *cantProcesses);
 
 /**
  * @brief Copies process information

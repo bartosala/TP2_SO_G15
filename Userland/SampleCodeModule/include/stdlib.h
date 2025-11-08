@@ -1,8 +1,8 @@
 #ifndef STDLIB_H
 #define STDLIB_H
 
-#include <stdint.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <syscall.h>
 
 #define EOF -1
@@ -12,7 +12,7 @@
  * @param s string para sacarle la longitud
  *
  */
-uint64_t strlen(const char * s);
+uint64_t strlen(const char *s);
 
 /**
  * @brief Imprime en pantalla un string formateado
@@ -66,35 +66,35 @@ int strcmp(const char *s1, const char *s2);
  * @param n entero a convertir
  * @param buff buffer donde se guardará el string
  */
-void intToStr(int n, char * buff);
+void intToStr(int n, char *buff);
 
 /**
  * @brief Convierte un entero a string en hexadecimal
  * @param n entero a convertir
  * @param buff buffer donde se guardará el string
  */
-void intToHex(int n, char * buff);
+void intToHex(int n, char *buff);
 
 /**
  * @brief Convierte un entero con signo a string (maneja números negativos)
  * @param n entero con signo a convertir
  * @param buff buffer donde se guardará el string
  */
-void signedIntToStr(int n, char * buff);
+void signedIntToStr(int n, char *buff);
 
 /**
  * @brief Convierte un uint64_t a string
  * @param n uint64_t a convertir
  * @param buff buffer donde se guardará el string
  */
-void uint64ToStr(uint64_t n, char * buff);
+void uint64ToStr(uint64_t n, char *buff);
 
 /**
  * @brief Obtiene un carácter de la entrada estándar.
- * 
+ *
  * Esta función espera y devuelve un único carácter ingresado por el usuario.
  * No requiere parámetros y devuelve el carácter como tipo char.
- * 
+ *
  * @return El carácter ingresado por el usuario.
  */
 char getChar();
@@ -113,7 +113,7 @@ unsigned int randInt();
  * @param size tamaño de la memoria a reservar
  * @return puntero a la memoria reservada
  */
-void * malloc(uint64_t size);
+void *malloc(uint64_t size);
 
 int checkNumber(char *str);
 
@@ -142,7 +142,7 @@ int atoi(const char *str);
  * @param n entero a convertir
  * @param buff buffer donde se guardará el string
  */
-char* itoa(int n);
+char *itoa(int n);
 
 int checkNumber(char *str);
 

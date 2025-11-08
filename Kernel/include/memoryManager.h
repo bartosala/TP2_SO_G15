@@ -1,9 +1,9 @@
 #ifndef MEMORY_MANAGER_H
 #define MEMORY_MANAGER_H
 
-#include <stdlib.h>
-#include <stdint.h>
 #include "../../Shared/shared_structs.h"
+#include <stdint.h>
+#include <stdlib.h>
 
 #define BLOCK_SIZE 64 // Tamaño de bloque en bytes
 
@@ -17,7 +17,5 @@ int getUsedMemory(void);
 int getFreeMemory(void);
 
 void getMemoryInfo(memInfo *info);
-
-
 
 #endif

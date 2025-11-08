@@ -13,7 +13,7 @@ int drawRectangle(uint64_t x, uint64_t y, uint64_t vLength, uint64_t hLength, ui
 void penUp();
 void penDown();
 
-uint8_t * getFrameBuffer();
+uint8_t *getFrameBuffer();
 uint16_t getPitch();
 
 void setColor(uint32_t color);

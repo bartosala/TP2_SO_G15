@@ -11,7 +11,7 @@ void lineFeed();
 
 void moveScreenUpIfFull();
 
-void printStr(char * s, uint32_t color);
+void printStr(char *s, uint32_t color);
 
 void printInt(uint64_t value, uint32_t color);
 

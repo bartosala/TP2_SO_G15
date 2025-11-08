@@ -8,4 +8,4 @@ void bussy_wait(uint64_t n);
 void endless_loop();
 void endless_loop_print(uint64_t wait);
 
-void *my_memset(void *dest, int value, uint32_t count); 
+void *my_memset(void *dest, int value, uint32_t count);

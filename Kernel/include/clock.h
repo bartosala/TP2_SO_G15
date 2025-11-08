@@ -3,13 +3,13 @@
 
 #include <stdint.h>
 
-typedef struct time{
-    int sec;
-    int min;
-    int hour;
-    int day;
-    int month;
-    int year;
+typedef struct time {
+	int sec;
+	int min;
+	int hour;
+	int day;
+	int month;
+	int year;
 } time;
 
 /**
