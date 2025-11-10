@@ -33,11 +33,15 @@ uint64_t my_process_inc(uint64_t argc, char *argv[])
 	if ((use_sem = satoi(argv[2])) < 0)
 		return -1;
 
+		/*
+		No porque ya esta abierto 
+
 	if (use_sem)
-		if (syscall_sem_open(SEM_ID, 1) == -1) {
+		if (syscall_sem_open(SEM_ID, 1) == -1) { 
 			printf("test_sync: ERROR opening semaphore\n");
 			return -1;
 		}
+			*/
 
 	uint64_t i;
 	for (i = 0; i < n; i++) {

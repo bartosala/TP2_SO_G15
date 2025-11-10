@@ -37,7 +37,7 @@ SemaphoreADT createSemaphoresManager()
 int8_t semOpen(uint8_t sem)
 {
 	if (!isValidSemaphore(sem) || semaphore->semaphores[sem].used == USED) {
-		return -1;
+		return -1; // FALLA ACA
 	}
 	return 0;
 }

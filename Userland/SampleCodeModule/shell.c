@@ -349,15 +349,7 @@ uint64_t shell(uint64_t argc, char **argv)
 	syscall_sizeUpFont(1);
 	printf("  ============================================================\n");
 	printf("  ||                                                        ||\n");
-	printf("  ||          Gracias por usar nuestra shell!              ||\n");
-	printf("  ||                                                        ||\n");
-	printf("  ||              Hasta pronto, %s!                   ||\n", username);
-	printf("  ||                                                        ||\n");
-	printf("  ||         -----------------------------------            ||\n");
-	printf("  ||                                                        ||\n");
-	printf("  ||       \"No llores porque termino,                      ||\n");
-	printf("  ||        sonrie porque sucedio.\"                        ||\n");
-	printf("  ||                               - Dr. Seuss             ||\n");
+	printf("  ||          Gracias TOTALES - Cerati              		||\n");
 	printf("  ||                                                        ||\n");
 	printf("  ============================================================\n");
 	syscall_sizeDownFont(1);

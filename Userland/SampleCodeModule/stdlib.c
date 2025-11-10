@@ -52,6 +52,29 @@ void intToStr(int n, char *buff)
 {
 	uintToBase(n, buff, 10);
 }
+// Sino imprime mal los uint64
+void u64_to_str(uint64_t value, char *buffer) {
+    char temp[32];
+    int i = 0;
+
+    if (value == 0) {
+        buffer[0] = '0';
+        buffer[1] = 0;
+        return;
+    }
+
+    while (value > 0) {
+        temp[i++] = '0' + (value % 10);
+        value /= 10;
+    }
+
+    int j = 0;
+    while (i > 0) {
+        buffer[j++] = temp[--i];
+    }
+
+    buffer[j] = 0;
+}
 
 void signedIntToStr(int n, char *buff)
 {
@@ -300,17 +323,24 @@ unsigned int randInt()
 	next = next * 1103515245 + 12345;
 	return (next / 65536) % 32768;
 }
+
 void *malloc(uint64_t size)
 {
-	if (size == 0)
-		return NULL;
-	void *ptr = syscall_allocMemory(size);
-	if (ptr == NULL) {
-		printferror("Error allocating memory of size %llu\n", size);
-	}
-	return ptr;
-}
+    if (size == 0)
+        return NULL;
 
+    void *ptr = syscall_allocMemory(size);
+
+    if (ptr == NULL) {
+        char buf[32];
+        u64_to_str(size, buf);
+        printferror("Error allocating memory of size ");
+        printferror(buf);
+        printferror("\n");
+    }
+
+    return ptr;
+}
 void free(void *ptr)
 {
 	if (ptr == NULL)
