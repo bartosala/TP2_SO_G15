@@ -22,7 +22,7 @@
 static int is_vowel(char c)
 {
 	return (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || c == 'A' || c == 'E' || c == 'I' || c == 'O' ||
-	        c == 'U');
+			c == 'U');
 }
 
 /**
@@ -65,7 +65,7 @@ static void printHex(unsigned int value)
 
 void printHeader()
 {
-	printf("\n");
+	printf("\nProcesos activos:\n");
 	printf("+-----+-------------+------+----------+----+\n");
 	printf("| PID | NAME        | PRIO | STATE    | FG |\n");
 	printf("+-----+-------------+------+----------+----+\n");
@@ -121,11 +121,11 @@ void printProcessInfo(PCB processInfo)
 	printf("%s", processInfo.foreground ? "Y" : "N");
 	printf("  |\n");
 	
-	printf("|     | RSP: 0x");
+	printf("|     | RSP=0x");
 	printHex((unsigned int)processInfo.rsp);
 	printf("            |\n");
-	
-	printf("|     | RBP: 0x");
+
+	printf("|     | RBP=0x");
 	printHex((unsigned int)processInfo.base);
 	printf("            |\n");
 	
@@ -171,22 +171,18 @@ int parse_string(char *arg, char **args, int max_args, int max_size)
 	int arg_count = 0;
 	int i = 0;
 
-	// Saltar espacios iniciales
 	while (is_space(arg[i]))
 		i++;
 
 	while (arg[i] != '\0' && arg_count < max_args) {
 		int j = 0;
 
-		// Copiar argumento mientras no haya espacio y haya espacio en buffer
 		while (arg[i] != '\0' && !is_space(arg[i]) && j < max_size - 1) {
 			args[arg_count][j++] = arg[i++];
 		}
 
-		// Terminar string
 		args[arg_count][j] = '\0';
 
-		// Si el argumento era más largo, saltar el resto
 		while (arg[i] != '\0' && !is_space(arg[i])) {
 			i++;
 		}
@@ -195,7 +191,6 @@ int parse_string(char *arg, char **args, int max_args, int max_size)
 			arg_count++;
 		}
 
-		// Saltar espacios entre argumentos
 		while (is_space(arg[i]))
 			i++;
 	}
@@ -212,13 +207,13 @@ int anal_arg(char *arg, char **args, int expected_args, int max_size)
 	}
 
 	int has_background = 0;
-
-	// Copia temporal
+    
+    
 	char buffer[1024];
 	strncpy(buffer, arg, sizeof(buffer) - 1);
 	buffer[sizeof(buffer) - 1] = '\0';
 
-	// Parsear argumentos (permitimos uno más por si hay un & suelto)
+    
 	char *temp_args[expected_args + 2];
 	char temp_storage[expected_args + 2][max_size];
 	for (int i = 0; i < expected_args + 2; i++) {
@@ -229,17 +224,15 @@ int anal_arg(char *arg, char **args, int expected_args, int max_size)
 	if (num_args < 0)
 		return -1;
 
-	// Detectar "&" como argumento independiente
 	if (num_args > 0 && strcmp(temp_args[num_args - 1], "&") == 0) {
 		has_background = 1;
-		num_args--; // Eliminar '&' del conteo
+		num_args--;
 	}
 
 	if (num_args != expected_args) {
 		return -1;
 	}
 
-	// Copiar argumentos válidos al arreglo destino
 	for (int i = 0; i < expected_args; i++) {
 		strncpy(args[i], temp_args[i], max_size);
 		args[i][max_size - 1] = '\0';
@@ -268,21 +261,20 @@ uint64_t cat(uint64_t argc, char *argv[])
 		}
 		c = getChar();
 	}
-	printf("\n");
+	printf("\n=== EOF ===\n");
 	return 0;
 }
 
 void loop(uint64_t argc, char *argv[])
 {
 	pid_t pid = syscall_getpid();
-	// Convertir el argumento a número
 	int32_t time = satoi(argv[0]);
 
 	if (time <= 0) {
 		printf("Error: time debe ser mayor que 0\n");
 		return;
 	}
-	printf("Proceso loop %d iniciado. Saludando cada %d segundos...\n", pid, time);
+	printf("[loop %d] iniciado. Intervalo: %d s\n", pid, time);
 
 	while (1) {
 		printf("\nHola! Soy el proceso %d\n", pid);
@@ -313,12 +305,12 @@ static int wc_process_char(char c, void *ctx)
 
 uint64_t wc(uint64_t argc, char *argv[])
 {
-	wc_context_t context = {1}; // Start with 1 line
+	wc_context_t context = {1};
 
 	read_and_process_chars(wc_process_char, &context);
 	printf("\n");
 
-	printf("Cantidad de lineas: %d\n\n", --context.lines);
+	printf("Line count: %d\n\n", --context.lines);
 	return 0;
 }
 
@@ -347,7 +339,7 @@ uint64_t filter(uint64_t argc, char *argv[])
 	filter_context_t context = {{0}, 0};
 
 	read_and_process_chars(filter_process_char, &context);
-	printf("\n%s\n", context.filtered);
+	printf("\nFiltered output:\n%s\n", context.filtered);
 	return 0;
 }
 

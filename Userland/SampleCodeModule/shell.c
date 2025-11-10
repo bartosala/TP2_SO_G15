@@ -8,7 +8,7 @@
 #define TRUE 1
 #define MAX_ECHO 1000
 #define MAX_USERNAME_LENGTH 16
-#define PROMPT "%s$> "
+#define PROMPT "%s@sh$ "
 #define CANT_INSTRUCTIONS 19
 uint64_t curr = 0;
 
@@ -95,29 +95,26 @@ static void error_and_cleanup(const char *error_msg, pipeCmd *pipe_cmd)
 static int handle_single_command(pipeCmd *pipe_cmd)
 {
 	if (pipe_cmd->cmd1.instruction == EXIT) {
-		free(pipe_cmd->cmd1.arguments);
-		free(pipe_cmd);
-		return 1; // Signal to exit shell
+			free(pipe_cmd->cmd1.arguments);
+			free(pipe_cmd);
+			return 1;
 	}
 
 	pid_t pid = instruction_handlers[pipe_cmd->cmd1.instruction](pipe_cmd->cmd1.arguments, 0, 1);
 	if (pid < 0) {
-		printferror("Error al ejecutar el comando.\n");
+		printferror("No se pudo ejecutar el comando.\n");
 	} else if (pid == 0) {
-		// Background process - don't wait
-		printf("Proceso ejecutado en background.\n");
-	} else {
-		// Foreground process - wait for completion
-		int status = 0;
-		syscall_waitpid(pid, &status);
-		// Don't print "Proceso X terminado" for successful completion (status 0)
-		if (status != 0) {
-			printf("Proceso %d terminado con estado %d\n", pid, status);
+		printf("Proceso lanzado en background.\n");
+		} else {
+			int status = 0;
+			syscall_waitpid(pid, &status);
+			if (status != 0) {
+				printf("Proceso %d terminado con estado %d\n", pid, status);
+			}
 		}
-	}
 	free(pipe_cmd->cmd1.arguments);
 	free(pipe_cmd);
-	return 0; // Continue shell
+	return 0;
 }
 
 /**
@@ -135,7 +132,7 @@ static void handle_builtin_command(pipeCmd *pipe_cmd)
 	}
 }
 
-// ========== COMMAND HANDLING ==========
+    
 
 static char *inst_list[] = {
     "help", "echo", "clear",  "test_mm", "test_processes",   "test_prio", "test_sync", "ps",      "memInfo", "loop",
@@ -278,7 +275,7 @@ uint64_t shell(uint64_t argc, char **argv)
 {
 	syscall_clearScreen();
 
-	// ASCII Art Header
+    
 	syscall_sizeUpFont(1);
 	printf("\n");
 	printf("  ========================================\n");
@@ -290,7 +287,7 @@ uint64_t shell(uint64_t argc, char **argv)
 	printf("\n");
 	syscall_sizeDownFont(1);
 
-	// Welcome message
+    
 	printf("  > Bienvenido a la shell interactiva\n");
 	printf("  > Escribe 'help' para ver todos los comandos\n");
 	printf("  > Escribe 'exit' para salir\n");
@@ -316,7 +313,7 @@ uint64_t shell(uint64_t argc, char **argv)
 		pipe_cmd->cmd2 = (command){-1, 0};
 		instructions = bufferControl(pipe_cmd);
 		switch (instructions) {
-		case 0: // built-in
+	case 0:
 			handle_builtin_command(pipe_cmd);
 			break;
 		case 1:
@@ -333,7 +330,7 @@ uint64_t shell(uint64_t argc, char **argv)
 		}
 	}
 
-	// Farewell message
+    
 	printf("\n");
 	printf("  ============================================================\n");
 	printf("  ||                                                        ||\n");

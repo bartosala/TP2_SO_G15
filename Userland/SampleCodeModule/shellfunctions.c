@@ -80,11 +80,9 @@ static pid_t create_process_with_args(const char *name, processFun function, cha
 static pid_t handle_process_with_args(const char *name, processFun function, char *arg, int expected_argc,
                                       const char *usage, int stdin, int stdout, char use_stdin)
 {
-	// Allocate storage for argument strings
 	char arg_storage[expected_argc > 0 ? expected_argc : 1][32];
 	char *args[expected_argc > 0 ? expected_argc : 1];
 
-	// Point args array to the storage
 	for (int i = 0; i < (expected_argc > 0 ? expected_argc : 1); i++) {
 		args[i] = arg_storage[i];
 	}
@@ -109,7 +107,6 @@ static pid_t handle_process_with_args(const char *name, processFun function, cha
 		return -1;
 	}
 
-	// Return 0 for background processes to match shell's expectation
 	return foreground ? pid : 0;
 }
 
@@ -144,7 +141,7 @@ uint64_t doHelp(uint64_t argc, char **argv)
 	printf(" - echo <texto>: imprime el texto especificado\n");
 	printf(" - clear: borra la pantalla y comienza arriba\n");
 	printf(" - exit: sale de la shell\n");
-	printf(" - memInfo: imprime el estado de la memoria\n");
+	printf(" - memInfo: muestra estado de memoria\n");
 	printf(" - ps: muestra todos los procesos con su informacion\n");
 	printf(" - loop <tiempo>: imprime su PID cada tiempo especificado\n");
 	printf(" - kill <pid>: mata el proceso con el PID especificado\n");
@@ -200,7 +197,7 @@ pid_t handle_clear(char *arg, int stdin, int stdout)
 
 uint64_t showMemInfo(int argc, char **argv)
 {
-	printf("Estado de memoria:\n");
+	printf("[Memoria] Estado:\n");
 
 	memInfo info;
 	if (syscall_memInfo(&info) == -1) {
@@ -277,23 +274,17 @@ pid_t handle_loop(char *arg, int stdin, int stdout)
 
 pid_t handle_wc(char *arg, int stdin, int stdout)
 {
-	return handle_process_with_args("wc", (processFun)wc, arg, 0, "Uso: wc\n", stdin, stdout,
-	                                1 // uses stdin
-	);
+	return handle_process_with_args("wc", (processFun)wc, arg, 0, "Uso: wc\n", stdin, stdout, 1);
 }
 
 pid_t handle_filter(char *arg, int stdin, int stdout)
 {
-	return handle_process_with_args("filter", (processFun)filter, arg, 0, "Uso: filter\n", stdin, stdout,
-	                                1 // uses stdin
-	);
+	return handle_process_with_args("filter", (processFun)filter, arg, 0, "Uso: filter\n", stdin, stdout, 1);
 }
 
 pid_t handle_cat(char *arg, int stdin, int stdout)
 {
-	return handle_process_with_args("cat", (processFun)cat, arg, 0, "Uso: cat\n", stdin, stdout,
-	                                1 // uses stdin
-	);
+	return handle_process_with_args("cat", (processFun)cat, arg, 0, "Uso: cat\n", stdin, stdout, 1);
 }
 
 uint64_t nice(int argc, char **argv)
@@ -366,7 +357,7 @@ void kill(char *arg)
 	if (syscall_kill(pid) == -1) {
 		printferror("Error al matar el proceso %l\n", pid);
 	} else {
-		printf("Proceso %l terminado correctamente\n", pid);
+		printf("Proceso %l finalizado\n", pid);
 	}
 }
 
@@ -380,7 +371,7 @@ void block(char *arg)
 	if (syscall_block(pid) == -1) {
 		printferror("Error al bloquear el proceso %l\n", pid);
 	} else {
-		printf("Proceso %l bloqueado correctamente\n", pid);
+		printf("Proceso %l bloqueado\n", pid);
 	}
 }
 
@@ -394,6 +385,6 @@ void unblock(char *arg)
 	if (syscall_unblock(pid) == -1) {
 		printferror("Error al desbloquear el proceso %l\n", pid);
 	} else {
-		printf("Proceso %l desbloqueado correctamente\n", pid);
+		printf("Proceso %l desbloqueado\n", pid);
 	}
 }
