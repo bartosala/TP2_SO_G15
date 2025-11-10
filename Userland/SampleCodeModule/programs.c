@@ -350,3 +350,4 @@ uint64_t filter(uint64_t argc, char *argv[])
 	printf("\n%s\n", context.filtered);
 	return 0;
 }
+

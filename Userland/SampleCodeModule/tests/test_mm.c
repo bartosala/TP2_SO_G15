@@ -1,11 +1,7 @@
-// This is a personal academic project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "test_util.h"
 #include <stdlib.h>
 #include <syscall.h>
 #include <testfunctions.h>
-
-// src : https://github.com/alejoaquili/ITBA-72.11-SO/tree/main/kernel-development/tests
 
 #define MAX_BLOCKS 128
 

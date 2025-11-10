@@ -24,6 +24,7 @@ int64_t test_processes(uint64_t argc, char *argv[])
 
 	p_rq p_rqs[max_processes];
 
+	printf("Entrando a ciclo infinito, Ctrl+C para terminar el test...");
 	while (1) {
 
 		// Create max_processes processes
