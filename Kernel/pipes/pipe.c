@@ -1,300 +1,173 @@
-
-#include <memoryManager.h>
 #include <pipe.h>
-#include <process.h>
-#include <scheduler.h>
+#include <memoryManager.h>
 #include <stddef.h>
-
-#define MAX_PIPES 32
-#define INVALID_FD -1
+#include <string.h>
+#include <scheduler.h>
+#include <process.h>
 
 typedef struct PipeManagerCDT {
 	pipe_t pipes[MAX_PIPES];
-	uint8_t usedPipes[MAX_PIPES];
+	uint8_t pipeCount;
 } PipeManagerCDT;
-
-typedef struct PipeManagerCDT *PipeManagerADT;
 
 static PipeManagerADT pipeManager = NULL;
 
-PipeManagerADT createPipeManager()
-{
-	pipeManager = (PipeManagerADT)allocMemory(sizeof(PipeManagerCDT));
-	if (pipeManager == NULL)
+PipeManagerADT createPipeManager() {
+	pipeManager = (PipeManagerADT)memAlloc(sizeof(PipeManagerCDT));
+	if (pipeManager != NULL) {
 		return NULL;
-
-	for (int i = 0; i < MAX_PIPES; i++) {
-		pipeManager->usedPipes[i] = 0;
-		pipeManager->pipes[i].isOpen = 0;
-		pipeManager->pipes[i].readerPID = -1;
-		pipeManager->pipes[i].writerPID = -1;
-		pipeManager->pipes[i].count = 0;
-		pipeManager->pipes[i].readIndex = 0;
-		pipeManager->pipes[i].writeIndex = 0;
-		pipeManager->pipes[i].readSemId = i * 3;
-		pipeManager->pipes[i].writeSemId = i * 3 + 1;
-		pipeManager->pipes[i].mutexId = i * 3 + 2;
-
-		semInit(pipeManager->pipes[i].readSemId, 0);
-		semInit(pipeManager->pipes[i].writeSemId, PIPE_BUFFER_SIZE);
-		semInit(pipeManager->pipes[i].mutexId, 1);
 	}
+
+	pipeManager->pipeCount = 0;
+
+	for(int i = 0; i < MAX_PIPES; i++) {
+		pipeManager->pipes[i] = pipeCreate();
+	}
+
 	return pipeManager;
 }
 
-static PipeManagerADT getPipeManager()
-{
-	if (pipeManager == NULL) {
-		pipeManager = createPipeManager();
-	}
-	return pipeManager;
+pipe_t pipeCreate() {
+	pipe_t newPipe;
+
+	newPipe.readIndex = 0;
+	newPipe.writeIndex = 0;
+	newPipe.size = 0;
+	newPipe.fd = -1;
+	newPipe.inputPID = -1;
+	newPipe.outputPID = -1;
+	newPipe.readLock = 0;
+	newPipe.writeLock = 0;
+
+	return newPipe;
 }
 
-static int findFreePipeSlot(PipeManagerADT manager)
-{
-	if (manager == NULL)
-		return INVALID_FD;
+uint8_t pipeOpen(uint16_t pid, uint8_t mode) {
+	
+	if(pipeManager == NULL || pipeManager->pipeCount >= MAX_PIPES) {
+		return -1;
+	}
 
-	for (int i = 0; i < MAX_PIPES; i++) {
-		if (!manager->usedPipes[i]) {
-			return i;
+	int8_t index = 0;
+	while(index < MAX_PIPES) {
+		if(pipeManager->pipes[index].fd != -1) {
+			if(pipeManager->pipes[index].inputPID == -1){
+				pipeManager->pipes[index].inputPID = pid;
+				return pipeManager->pipes[index].fd;
+			} else if(mode == PIPE_WRITE && pipeManager->pipes[index].outputPID == -1) {
+				pipeManager->pipes[index].outputPID = pid;
+				return pipeManager->pipes[index].fd;
+			}
 		}
 	}
-	return INVALID_FD;
-}
+	
+	index = -1;
 
-static pipe_t *findPipeById(PipeManagerADT manager, uint32_t id)
-{
-	if (manager == NULL)
-		return NULL;
-
-	for (int i = 0; i < MAX_PIPES; i++) {
-		if (manager->usedPipes[i] && manager->pipes[i].id == id) {
-			return &manager->pipes[i];
+	for(int i = 0; index < MAX_PIPES; index ++, i++){
+		if(pipeManager->pipes[i].fd == -1){
+			index = i;
+			break;
 		}
 	}
-	return NULL;
-}
 
-int pipeCreate(uint32_t id)
-{
-	PipeManagerADT manager = getPipeManager();
-	if (manager == NULL)
-		return INVALID_FD;
-
-	if (findPipeById(manager, id) != NULL) {
-		return INVALID_FD;
-	}
-
-	int pipeIndex = findFreePipeSlot(manager);
-	if (pipeIndex == INVALID_FD) {
-		return INVALID_FD;
-	}
-
-	pipe_t *pipe = &manager->pipes[pipeIndex];
-	pipe->id = id;
-	pipe->isOpen = 1;
-	pipe->readerPID = -1;
-	pipe->writerPID = -1;
-	pipe->count = 0;
-	pipe->readIndex = 0;
-	pipe->writeIndex = 0;
-	pipe->isFromTerminal = 0;
-
-	manager->usedPipes[pipeIndex] = 1;
-
-	return pipeIndex;
-}
-
-int pipeOpen(uint32_t id, int mode)
-{
-	PipeManagerADT manager = getPipeManager();
-	if (manager == NULL)
-		return INVALID_FD;
-
-	pipe_t *pipe = findPipeById(manager, id);
-	if (pipe == NULL || !pipe->isOpen) {
-		return INVALID_FD;
-	}
-
-	pid_t currentPid = getCurrentPid();
-
-	if (mode == PIPE_READ) {
-		if (pipe->readerPID != -1) {
-			return INVALID_FD; // Pipe already has a reader
-		}
-		pipe->readerPID = currentPid;
-	} else if (mode == PIPE_WRITE) {
-		if (pipe->writerPID != -1) {
-			return INVALID_FD;
-		}
-		pipe->writerPID = currentPid;
-	} else {
-		return INVALID_FD;
-	}
-
-	return (pipe - manager->pipes);
-}
-
-int pipeOpenForPid(uint32_t id, int mode, pid_t pid)
-{
-	PipeManagerADT manager = getPipeManager();
-	if (manager == NULL)
-		return INVALID_FD;
-
-	pipe_t *pipe = findPipeById(manager, id);
-	if (pipe == NULL || !pipe->isOpen) {
-		return INVALID_FD;
-	}
-
-	if (mode == PIPE_READ) {
-		if (pipe->readerPID != -1) {
-			return INVALID_FD;
-		}
-		pipe->readerPID = pid;
-	} else if (mode == PIPE_WRITE) {
-		if (pipe->writerPID != -1) {
-			return INVALID_FD;
-		}
-		pipe->writerPID = pid;
-	} else {
-		return INVALID_FD;
-	}
-
-	return (pipe - manager->pipes);
-}
-
-int pipeRead(int pipe_fd, void *buf, size_t count)
-{
-	PipeManagerADT manager = getPipeManager();
-	if (manager == NULL)
-		return -1;
-
-	if (pipe_fd < 0 || pipe_fd >= MAX_PIPES || !manager->usedPipes[pipe_fd]) {
+	if(index == -1) {
 		return -1;
 	}
 
-	pipe_t *pipe = &manager->pipes[pipe_fd];
-	if (!pipe->isOpen) {
-		return -1;
-	}
-
-	char *buffer = (char *)buf;
-	int bytesRead = 0;
-
-	for (int i = 0; i < count; i++) {
-		semWait(pipe->readSemId);
-		semWait(pipe->mutexId);
-
-		if (pipe->count > 0) {
-			buffer[i] = pipe->buffer[pipe->readIndex];
-			pipe->readIndex = (pipe->readIndex + 1) % PIPE_BUFFER_SIZE;
-			pipe->count--;
-			bytesRead++;
-		}
-
-		semPost(pipe->mutexId);
-		semPost(pipe->writeSemId);
-	}
-
-	return bytesRead;
-}
-
-int pipeWrite(int pipe_fd, const void *buf, size_t count)
-{
-	PipeManagerADT manager = getPipeManager();
-	if (manager == NULL)
-		return -1;
-
-	if (pipe_fd < 0 || pipe_fd >= MAX_PIPES || !manager->usedPipes[pipe_fd]) {
-		return -1;
-	}
-
-	pipe_t *pipe = &manager->pipes[pipe_fd];
-	if (!pipe->isOpen) {
-		return -1;
-	}
-
-	if (pipe_fd != 0 && pipe->writerPID != getCurrentPid()) {
-		return -1;
-	}
-
-	if (pipe->readerPID == -1) {
-		return -1;
-	}
-
-	const char *buffer = (const char *)buf;
-	int bytesWritten = 0;
-
-	for (int i = 0; i < count; i++) {
-		semWait(pipe->writeSemId);
-		semWait(pipe->mutexId);
-
-		if (pipe->count < PIPE_BUFFER_SIZE) {
-			pipe->buffer[pipe->writeIndex] = buffer[i];
-			pipe->writeIndex = (pipe->writeIndex + 1) % PIPE_BUFFER_SIZE;
-			pipe->count++;
-			bytesWritten++;
-		}
-
-		semPost(pipe->mutexId);
-		semPost(pipe->readSemId);
-	}
-
-	return bytesWritten;
-}
-
-int pipeClose(int pipe_fd)
-{
-	PipeManagerADT manager = getPipeManager();
-	if (manager == NULL)
-		return -1;
-
-	if (pipe_fd < 0 || pipe_fd >= MAX_PIPES || !manager->usedPipes[pipe_fd]) {
-		return -1;
-	}
-
-	pipe_t *pipe = &manager->pipes[pipe_fd];
-	pid_t currentPid = getCurrentPid();
-
-	if (currentPid == pipe->readerPID) {
-		pipe->readerPID = -1;
-	} else if (currentPid == pipe->writerPID) {
-		pipe->writerPID = -1;
+	pipe_t newPipe = pipeCreate();
+	newPipe.fd = index + 3;
+	if(mode == PIPE_READ) {
+		newPipe.inputPID = pid;
 	} else {
 		return -1;
 	}
 
-	if (pipe->readerPID == -1 && pipe->writerPID == -1) {
-		pipe->isOpen = 0;
-		pipe->count = 0;
-		pipe->readIndex = 0;
-		pipe->writeIndex = 0;
-		manager->usedPipes[pipe_fd] = 0;
-	}
-
-	return 0;
+	pipeManager->pipes[index] = newPipe;
+	pipeManager->pipeCount++;
+	return pipeManager->pipes[index].fd;
 }
 
-int pipeClear(int id)
-{
-	PipeManagerADT manager = getPipeManager();
-	if (manager == NULL)
-		return -1;
+uint8_t closePipe(uint8_t fd){
+	if(pipeManager == NULL || pipeManager->pipes[fd - 3].fd == -1){
+		return 0;
+	}
 
-	pipe_t *pipe = findPipeById(manager, id);
-	if (pipe == NULL || !pipe->isOpen) {
+	pipeManager->pipes[fd - 3].fd = -1;
+	pipeManager->pipes[fd - 3].inputPID = -1;
+	pipeManager->pipes[fd - 3].outputPID = -1;
+	pipeManager->pipeCount--;
+	return 1;
+}
+
+uint8_t writePipe(uint8_t fd, char *buffer, uint8_t size){
+	if(pipeManager == NULL || fd-3 >= MAX_PIPES || size > PIPE_BUFFER_SIZE || pipeManager->pipes[fd - 3].writeLock  
+	|| pipeManager->pipes[fd - 3].size == PIPE_BUFFER_SIZE || pipeManager->pipes[fd - 3].fd == -1 || pipeManager->pipes[fd - 3].outputPID == -1){
+		return 0;
+	}
+
+	pipe_t *pipe = &pipeManager->pipes[fd - 3];
+	uint8_t written = 0;
+	for(int i = 0; i < size; i++){
+		while(pipe->size == PIPE_BUFFER_SIZE){
+			pipe->writeLock = 1;
+			blockProcess(pipe->outputPID);
+			yield();
+			if(pipe->fd == -1 || pipe->outputPID == -1){
+				return written;
+			}
+		}
+		pipe->buffer[pipe->writeIndex] = buffer[i];
+		pipe->writeIndex = (pipe->writeIndex + 1) % PIPE_BUFFER_SIZE;
+		pipe->size++;
+		written++;
+		
+		if(pipe->readLock){
+			pipe->readLock = 0;
+			unblockProcess(pipe->inputPID);
+		}
+	}
+	pipe->writeLock = 0;
+	return written;
+}
+
+uint8_t pipeRead(uint8_t pipe_fd, char *buf, uint8_t size){
+	if( pipeManager == NULL || pipe_fd-3 >= MAX_PIPES || size > PIPE_BUFFER_SIZE){
+		return 0;
+	}
+
+	if(pipeManager->pipes[pipe_fd - 3].fd == -1 || pipeManager->pipes[pipe_fd - 3].inputPID == -1){
+		return 0;
+	}
+
+	if(pipeManager->pipes[pipe_fd - 3].size == 0 && pipeManager->pipes[pipe_fd - 3].outputPID == -1){
 		return -1;
 	}
 
-	semWait(pipe->mutexId);
-	pipe->count = 0;
-	pipe->readIndex = 0;
-	pipe->writeIndex = 0;
-	semPost(pipe->mutexId);
+	while(pipeManager->pipes[pipe_fd - 3].size == 0 && pipeManager->pipes[pipe_fd - 3].outputPID != -1){
+		pipeManager->pipes[pipe_fd - 3].readLock = 1;
+		blockProcess(pipeManager->pipes[pipe_fd - 3].inputPID);
+		yield();
+		if(pipeManager->pipes[pipe_fd - 3].size == 0 && pipeManager->pipes[pipe_fd - 3].outputPID == -1){
+			return -1;
+		}
+	}
 
-	semInit(pipe->readSemId, 0);
-	semInit(pipe->writeSemId, PIPE_BUFFER_SIZE);
+	uint8_t read = size < pipeManager->pipes[pipe_fd - 3].size ? size : pipeManager->pipes[pipe_fd - 3].size;
+	for(int i = 0; i < read; i++){
+		buf[i] = pipeManager->pipes[pipe_fd - 3].buffer[pipeManager->pipes[pipe_fd - 3].readIndex];
+		pipeManager->pipes[pipe_fd - 3].readIndex = (pipeManager->pipes[pipe_fd - 3].readIndex + 1) % PIPE_BUFFER_SIZE;
+		pipeManager->pipes[pipe_fd - 3].size--;
 
-	return 0;
+		if(pipeManager->pipes[pipe_fd - 3].writeLock){
+			pipeManager->pipes[pipe_fd - 3].writeLock = 0;
+			unblockProcess(pipeManager->pipes[pipe_fd - 3].outputPID);
+		}
+	}
+	pipeManager->pipes[pipe_fd - 3].readLock = 0;
+	return read;
+}
+
+int killAllPipeProcesses(){
+
+
 }

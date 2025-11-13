@@ -39,7 +39,7 @@ uint64_t syscall_unblock(uint64_t pid);
 int8_t syscall_changePrio(uint64_t pid, int8_t newPrio);
 PCB *syscall_getProcessInfo(uint64_t *cantProcesses);
 int syscall_yield();
-pid_t syscall_waitpid(pid_t pid, int32_t *status);
+uint16_t syscall_waitpid(uint16_t pid, int32_t *status);
 
 // Semáforos
 int syscall_sem_open(int sem_id, uint64_t initialValue);
@@ -50,6 +50,7 @@ int syscall_sem_close(int sem_id);
 // Pipes
 int syscall_open_pipe();
 int syscall_close_pipe(int pipe_id);
-int syscall_clear_pipe(int pipe_id);
+int syscall_write_pipe(int pipe_fd, char *buf, uint64_t size);
+int syscall_read_pipe(int pipe_fd, char *buf, uint64_t size);
 
 #endif

@@ -28,5 +28,6 @@ int8_t semClose(uint8_t sem);
 int8_t semWait(uint8_t sem);
 int8_t semPost(uint8_t sem);
 int8_t semInit(uint8_t sem, uint8_t value);
+int8_t semCheck(uint8_t sem);
 
 #endif // SEMAPHORE_H

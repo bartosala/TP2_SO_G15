@@ -1,4 +1,4 @@
-#include "../include/double_linked_list.h"
+#include <doubleLinkedList.h>
 #include "../include/memoryManager.h"
 #include <stddef.h>
 #include <stdint.h>

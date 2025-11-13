@@ -18,121 +18,81 @@
 #define MAX_PIPES 16
 extern uint64_t regs[CANT_REGS];
 
+#define STDIN 0
+#define STDOUT 1
+#define STDERR 2
+
 typedef struct Point2D {
 	uint64_t x, y;
 } Point2D;
-typedef uint64_t (*syscall_fn)(uint64_t rbx, uint64_t rcx, uint64_t rdx);
 
-/*
-static uint64_t syscall_write(uint64_t fd, char *buff, uint64_t length) {
-    if (length < 0) return 1;
-    if (fd > 2 || fd < 0) return 2;
-    uint64_t color = (fd == 1 ? 0x00FFFFFF : (fd == 2 ? 0x00FF0000 : 0));
-    if(!color) return 0;
-    for(int i = 0; i < length; i++)
-        putChar(buff[i],color);
-    return length;
-}
-    */
+typedef uint64_t (*syscall_fn)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
 
-static uint64_t syscall_write(uint64_t fd, char *buff, uint64_t length)
-{
-	if (fd == 1) {
-		fd = getCurrentStdout();
-	} else if (fd == 0) {
-		fd = getCurrentStdin();
+static uint64_t syscall_write(uint32_t fd, char *buff, uint32_t length){
+	if(fd == STDERR){
+		return 0;
 	}
-	uint64_t color = fd == 1 ? 0x00FFFFFF : 0x00FF0000;
-	switch (fd) {
-	case 0:
-		return pipeWrite(0, buff, length);
-		break;
-	case 1:
-	case 2:
-		for (int i = 0; i < length && buff[i] != -1; i++)
-			putChar(buff[i], color);
-		return length;
-		break;
-	default:
-		int64_t i;
-		if (fd >= 3 + MAX_PIPES || (i = pipeWrite(fd, buff, length)) < 0) {
-			return -1;
+	
+	int16_t fdVal = fd < 3 ? getFileDescriptor(fd) : fd;
+	if(fdVal < 0){
+		return -1;
+	}
+
+	if(fdVal == STDOUT){
+		for(int i = 0; i < length; i++){
+			putChar(buff[i], 0x00FFFFFF);
 		}
-		return i;
-		break;
+		return length;
+	} else if(fdVal >= 3){
+		int ret = pipeWrite(fdVal, buff, length);
+		yield();
+		return (ret < 0) ? -1 : ret;
 	}
 	return -1;
 }
 
-static uint64_t syscall_clearScreen()
-{
+static uint64_t syscall_clearScreen(){
 	clearText(0);
 	return 0;
 }
-/*
-static uint64_t syscall_read( char* str,  uint64_t length){
-    for(int i = 0; i < length && length > 0; i++){
-        str[i] = getChar();
-    }
-    return length > 0 ? length : 0;
-}
-    */
 
-static uint64_t syscall_read(uint64_t fd, char *str, uint64_t length)
-{
-	int actual_fd = fd;
-
-	if (fd >= 3 + MAX_PIPES) {
+static uint64_t syscall_read(uint64_t fd, char *str, uint64_t length){
+	int16_t fdVal = fd < 3 ? getFileDescriptor(fd) : fd;
+	if(fdVal < 0){
 		return -1;
 	}
-	if (fd == 0) {
-		actual_fd = getCurrentStdin();
-		if (actual_fd == -1) {
-			return -1;
+
+	if(fdVal == STDIN){
+		uint64_t bytesRead = 0;
+		while(bytesRead < length){
+			char c = getChar();
+			if(c == (char)EOF){
+				break;
+			}
+			str[bytesRead++] = c;
 		}
+		return bytesRead;
+	} else if(fdVal >= 3){
+		int ret = pipeRead(fdVal, str, length);
+		yield();
+		return (ret < 0) ? -1 : ret;
 	}
-	return pipeRead(actual_fd, str, length);
+	return -1;
 }
 
-static uint64_t syscall_fontSizeUp(uint64_t increase)
-{
-	return fontSizeUp(increase);
-}
 
-static uint64_t syscall_fontSizeDown(uint64_t decrease)
-{
-	return fontSizeDown(decrease);
-}
-
-static uint64_t syscall_getWidth()
-{
-	return getWidth();
-}
-
-static uint64_t syscall_getHeight()
-{
-	return getHeight();
-}
-
-static uint64_t syscall_wait(uint64_t ticks)
-{
+static uint64_t syscall_wait(uint64_t ticks){
 	wait_ticks(ticks);
 	return ticks;
 }
 
-static uint64_t syscall_allocMemory(uint64_t size)
-{
-	return (uint64_t)allocMemory(size);
-}
 
-static uint64_t syscall_freeMemory(uint64_t address)
-{
+static uint64_t syscall_freeMemory(uint64_t address){
 	freeMemory((void *)address);
 	return 0;
 }
 
-static inline uint64_t argCounter(char **argv)
-{
+static inline uint64_t argCounter(char **argv){
 	uint64_t c = 0;
 	if (argv == NULL || *argv == NULL) {
 		return 0;
@@ -143,137 +103,7 @@ static inline uint64_t argCounter(char **argv)
 	return c;
 }
 
-pid_t syscall_create_process(ProcessParams *p)
-{
-	return createProcess(p->name, (processFun)p->function, argCounter(p->arg), p->arg, p->priority, p->foreground,
-	                     p->stdin, p->stdout);
-}
-
-static uint64_t syscall_exit(uint64_t ret)
-{
-	char char_eof = (char)0xFF;
-	syscall_write(1, &char_eof, 1);
-	kill(getCurrentPid(), ret);
-	return 0;
-}
-
-pid_t syscall_getpid()
-{
-	return getCurrentPid();
-}
-
-static uint64_t syscall_kill(pid_t pid)
-{
-	return kill(pid, 9);
-}
-
-pid_t syscall_block(pid_t pid)
-{
-	return blockProcess(pid);
-}
-
-static uint64_t syscall_unblock(uint64_t pid)
-{
-	return unblockProcess(pid);
-}
-
-void syscall_yield(uint64_t a, uint64_t b, uint64_t c)
-{
-	yield();
-}
-
-static int8_t syscall_changePrio(uint64_t pid, int8_t newPrio)
-{
-	return changePrio(pid, newPrio);
-}
-
-static PCB *syscall_getProcessInfo(uint64_t *cantProcesses)
-{
-	return getProcessInfo(cantProcesses);
-}
-
-static int64_t syscall_memInfo(memInfo *user_ptr)
-{
-	if (user_ptr == NULL) {
-		return -1;
-	}
-	memInfo temp;
-	getMemoryInfo(&temp);
-	user_ptr->total = temp.total;
-	user_ptr->used = temp.used;
-	user_ptr->free = temp.free;
-
-	return 0;
-}
-
-int syscall_sem_wait(uint8_t sem_id)
-{
-	if (sem_id < 0)
-		return -1;
-	return semWait(sem_id);
-}
-
-int syscall_sem_post(uint8_t sem_id)
-{
-	if (sem_id < 0)
-		return -1;
-	return semPost(sem_id);
-}
-
-int syscall_sem_close(uint8_t sem_id)
-{
-	if (sem_id < 0)
-		return -1;
-	return semClose(sem_id);
-}
-
-int syscall_sem_open(uint8_t sem_id)
-{
-	if (sem_id < 0)
-		return -1;
-	return semOpen(sem_id);
-}
-
-int syscall_openPipe()
-{
-	static uint32_t nextPipeId = 1;
-	uint32_t pipeId = nextPipeId++;
-
-	int pipe_fd = pipeCreate(pipeId);
-	if (pipe_fd < 0)
-		return -1;
-
-	int read_fd = pipeOpen(pipeId, PIPE_READ);
-	if (read_fd < 0) {
-		pipeClose(pipe_fd);
-		return -1;
-	}
-
-	int write_fd = pipeOpen(pipeId, PIPE_WRITE);
-	if (write_fd < 0) {
-		pipeClose(read_fd);
-		return -1;
-	}
-
-	return pipeId;
-}
-
-int syscall_closePipe(int pipe_id)
-{
-	return pipeClose(pipe_id);
-}
-
-int syscall_clearPipe(int pipe_id)
-{
-	return pipeClear(pipe_id);
-}
-
-pid_t syscall_waitPid(pid_t pid, int32_t *retValue)
-{
-	return waitpid(pid, retValue);
-}
-
-uint64_t syscallDispatcher(uint64_t syscall_number, uint64_t arg1, uint64_t arg2, uint64_t arg3)
+uint64_t syscallDispatcher(uint64_t syscall_number, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5, uint64_t arg6)
 {
 	if (syscall_number > CANT_SYSCALLS)
 		return 0;
@@ -282,34 +112,36 @@ uint64_t syscallDispatcher(uint64_t syscall_number, uint64_t arg1, uint64_t arg2
 	    0,
 	    (syscall_fn)syscall_read,
 	    (syscall_fn)syscall_write,
-	    (syscall_fn)syscall_clearScreen,
-	    (syscall_fn)syscall_fontSizeUp,
-	    (syscall_fn)syscall_fontSizeDown,
-	    (syscall_fn)syscall_getHeight,
-	    (syscall_fn)syscall_getWidth,
+	    (syscall_fn)clearText,
+	    (syscall_fn)fontSizeUp,
+	    (syscall_fn)fontSizeDown,
+	    (syscall_fn)getHeight,
+	    (syscall_fn)getWidth,
 	    (syscall_fn)syscall_wait,
-	    (syscall_fn)syscall_allocMemory,
+	    (syscall_fn)allocMemory,
 	    (syscall_fn)syscall_freeMemory,
-	    (syscall_fn)syscall_create_process,
-	    (syscall_fn)syscall_getpid,
-	    (syscall_fn)syscall_kill,
-	    (syscall_fn)syscall_block,
-	    (syscall_fn)syscall_unblock,
-	    (syscall_fn)syscall_changePrio,
-	    (syscall_fn)syscall_getProcessInfo,
-	    (syscall_fn)syscall_memInfo,
-	    (syscall_fn)syscall_exit,
-	    (syscall_fn)syscall_sem_open,
-	    (syscall_fn)syscall_sem_wait,
-	    (syscall_fn)syscall_sem_post,
-	    (syscall_fn)syscall_sem_close,
-	    (syscall_fn)syscall_yield,
-	    (syscall_fn)syscall_openPipe,
-	    (syscall_fn)syscall_closePipe,
-	    (syscall_fn)syscall_clearPipe,
-	    (syscall_fn)syscall_waitPid,
+		(syscall_fn)createProcess,
+		(syscall_fn)getPid,
+		(syscall_fn)killProcess,
+		(syscall_fn)blockProcess,
+		(syscall_fn)unblockProcess,
+		(syscall_fn)changePriority,
+		(syscall_fn)getProcessInfo,
+		(syscall_fn)syscall_memInfo,
+		(syscall_fn)semOpen,
+		(syscall_fn)semWait,
+		(syscall_fn)semPost,
+		(syscall_fn)semClose,
+		(syscall_fn)yield,
+		(syscall_fn)pipeOpen,
+		(syscall_fn)pipeClose,
+		(syscall_fn)pipeWrite,
+		(syscall_fn)pipeRead,
+		(syscall_fn)setStatus,
+		(syscall_fn)changeFd,
+		(syscall_fn)wait_ticks
 	};
-	uint64_t ret = syscalls[syscall_number](arg1, arg2, arg3);
+	uint64_t ret = syscalls[syscall_number](arg1, arg2, arg3, arg4, arg5, arg6);
 	_sti();
 	return ret;
 }
