@@ -101,7 +101,11 @@ static void checkSpecialKeys(unsigned int key)
 static void addToBuffer(unsigned int key)
 {
 	char c = (char)key;
-	pipeWrite(0, &c, 1);
+	int fd = getFileDescriptor(STDIN_FD);
+	if (fd <= 0) {
+		return;
+	}
+	pipeWrite(fd, &c, 1);
 }
 
 int bufferWrite()
@@ -113,7 +117,7 @@ int bufferWrite()
 
 	if (!specialKey && c < F12_PRESS) {
 		if (ctrlPressed && press_keys[c].ascii == 'c') {
-			kill(getForegroundPid(), 1); // CTRL + C mata al proceso actual
+			killProcess(getPid());
 			printStr("^C", 0x00FFFFFF);
 			lineFeed();
 			return 0;
@@ -137,8 +141,8 @@ int bufferWrite()
 
 char getChar()
 {
-	int stdin_fd = getCurrentStdin();
-	if (stdin_fd == -1) {
+	int stdin_fd = getFileDescriptor(STDIN_FD);
+	if (stdin_fd <= 0) {
 		return 0;
 	}
 

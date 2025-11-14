@@ -15,6 +15,7 @@
 #include <textModule.h>
 #include <time.h>
 #include <videoDriver.h>
+#include "../../Shared/stdlib.h"
 
 extern uint8_t text;
 extern uint8_t rodata;
@@ -74,27 +75,23 @@ uint64_t idle(uint64_t argc, char **argv)
 int main()
 {
 	_cli();
-	fontSizeUp(2);
-	printStr(" TP 2 SO \n", WHITE);
-	fontSizeDown(2);
 
 	createMemoryManager((void *)HEAP_START_ADDRESS, HEAP_SIZE);
-	startScheduler(idle);
-	if (createPipeManager() == NULL) {
-		printStr("Error initializing pipe manager\n", RED);
-		return -1;
-	}
-	if (createSemaphoresManager() == NULL) {
-		printStr("Error initializing semaphore manager\n", RED);
-		return -1;
-	}
-	createProcess("shell", (processFun)sampleCodeModuleAddress, 0, NULL, 0, 1, 0, 1);
+	createScheduler();
+	createPipeManager();
+	createSemaphoresManager();
 	load_idt();
+	static char arg0[] = "shell";
+	static char *argv[] = {arg0, NULL};
+	createProcess((EntryPoint)sampleCodeModuleAddress, argv, 1, 2, fileDescriptors);
+	static char idleArg[] = "idle";
+    static char *idleArgv[] = {idleArg, NULL};
+    static uint16_t idleFileDescriptors[3] = {0, 0, 0};  
+    createProcess((EntryPoint)idleProcess, idleArgv, 1, 0, idleFileDescriptors);
 	clear_buffer();
 	_sti();
 	while (1) {
 		_hlt();
 	}
-
 	return 0;
 }

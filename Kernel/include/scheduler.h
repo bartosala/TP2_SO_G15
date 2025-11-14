@@ -1,3 +1,6 @@
+#ifndef SCHEDULER_H
+#define SCHEDULER_H
+
 #include <stdint.h>
 #include <memoryManager.h>
 #include <process.h>
@@ -35,7 +38,6 @@ int setStatus(uint16_t pid, State status);
 SchedulerADT createScheduler();
 int blockProcess(uint16_t pid);
 int unblockProcess(uint16_t pid);
-int blockProcess(uint16_t pid);
 PCB* getProcess(uint16_t pid);
 uint16_t getPid();
 void* schedule(void * processStackPointer);
@@ -43,3 +45,5 @@ int killFgProcess();
 ProcessInfo* getProcessInfo(int* size);
 int changeFd(uint16_t pid, uint16_t fileDescriptors[]);
 int getFileDescriptor(uint8_t fd);
+
+#endif // SCHEDULER_H
