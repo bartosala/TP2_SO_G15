@@ -13,24 +13,46 @@ typedef struct memInfo {
 
 
 typedef enum {
-    BLOCKED,
     READY,
     RUNNING,
+    BLOCKED,
     ZOMBIE,
-    DEAD
+    EXITED,
+    KILLED,
+    SEM_WAITING
 } State;
+
+typedef int pid_t;
 
 // Funcion que el proceso ejecuta al iniciarse
 typedef uint64_t (*processFun)(uint64_t argc, char **argv);
-typedef int (*EntryPoint)();
 
-typedef struct ProcessInfo {
-    char* name;
-    uint16_t pid;
-    uint8_t priority;
-    char foreground;
-    uint64_t stack;
+
+typedef struct {
+    pid_t pid;
+    pid_t parentPid;
+    pid_t waitingForPid;
+    int8_t priority;
     State state;
-} ProcessInfo;
+    uint64_t rsp;
+    uint64_t base;
+    uint64_t entryPoint;
+    uint64_t retValue;
+    char foreground;
+    //fds
+    int stdin;
+    int stdout;
+    char name[NAME_MAX_LENGTH];
+} PCB;
+
+typedef struct ProcessParams {
+    char* name;
+    processFun function;
+    int8_t priority;
+    char** arg;
+    char foreground;
+    int stdin;
+    int stdout;  
+} ProcessParams;
 
 #endif 

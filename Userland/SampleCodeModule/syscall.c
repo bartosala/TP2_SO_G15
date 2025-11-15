@@ -39,8 +39,7 @@ enum syscall_number {
 	YIELD,
 	OPEN_PIPE,
 	CLOSE_PIPE,
-	WRITE_PIPE,
-	READ_PIPE,
+	CLEAR_PIPE,
 	WAITPID
 };
 
@@ -182,14 +181,9 @@ int syscall_close_pipe(int pipe_id)
 	return syscall(CLOSE_PIPE, pipe_id, 0, 0);
 }
 
-int syscall_write_pipe(int pipe_fd, char *buf, uint64_t size)
+int syscall_clear_pipe(int pipe_id)
 {
-	return syscall(WRITE_PIPE, pipe_fd, (uint64_t)buf, size);
-}
-
-int syscall_read_pipe(int pipe_fd, char *buf, uint64_t size)
-{
-	return syscall(READ_PIPE, pipe_fd, (uint64_t)buf, size);
+	return syscall(CLEAR_PIPE, pipe_id, 0, 0);
 }
 
 pid_t syscall_waitpid(pid_t pid, int32_t *status)

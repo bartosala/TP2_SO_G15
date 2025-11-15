@@ -1,38 +1,60 @@
 #ifndef PROCESS_H
 #define PROCESS_H
 
-#include "../../Shared/shared_structs.h"
-#include <doubleLinkedList.h>
+#include "../../Shared/shared_structs.h" // defines PCB, pid_t, State
+#include "queue.h"
 #include <stdbool.h>
 #include <stdint.h>
 
-#define FILE_DESCRPIPTORS 3
+#define STACK_SIZE 4096 // una pagina
 
-typedef struct PCB{
-    char* name;
-    char** argv;
-    int argc;
-    uint16_t foreground;
-    uint8_t priority;
-    uint64_t stack;
-    uint64_t basePointer;
-    int16_t fds[FILE_DESCRPIPTORS];
-    uint16_t pid;
-    uint16_t ppid;
-    EntryPoint rip;
-    State state;
-    uint8_t quantum;
-    DoubleLinkedListADT childList;
-    int8_t childSem;
-    void* rsp;
-} PCB;
+typedef struct ProcessManagerCDT *ProcessManagerADT;
 
-void freeProcess(PCB* process);
+/* lifecycle */
+ProcessManagerADT createProcessManager(void);
+void freeProcessLinkedLists(ProcessManagerADT pm);
 
-uint16_t waitForChildern();
-uint64_t setStackFrame(uint64_t rsp, uint64_t code, int argc, char* args[], EntryPoint entryPoint);
-char** allocArgv(PCB *p, char **argv, int argc);
-void processWrapper(void (*entryPoint)(int, char**), int argc, char** argv);
-void idleProcess();
+/* basic operations */
+void addProcess(ProcessManagerADT pm, PCB *process);
+void removeFromReady(ProcessManagerADT pm, pid_t pid);
+void removeFromZombie(ProcessManagerADT pm, pid_t pid);
+
+/* queue switches / blocking */
+int blockProcessQueue(ProcessManagerADT list, pid_t pid);
+int blockProcessQueueBySem(ProcessManagerADT list, pid_t pid);
+int unblockProcessQueue(ProcessManagerADT list, pid_t pid);
+int unblockProcessQueueBySem(ProcessManagerADT list, pid_t pid);
+
+/* queries */
+PCB *getProcess(ProcessManagerADT pm, pid_t pid);
+PCB *getNextReadyProcess(ProcessManagerADT pm);
+int hasNextReadyProcess(ProcessManagerADT pm);
+PCB *getCurrentProcess(ProcessManagerADT pm);
+
+void setIdleProcess(ProcessManagerADT pm, PCB *idleProcess);
+void foregroundProcessSet(ProcessManagerADT pm, PCB *process);
+PCB *getIdleProcess(ProcessManagerADT pm);
+
+uint64_t processCount(ProcessManagerADT pm);
+uint64_t readyProcessCount(ProcessManagerADT pm);
+uint64_t blockedProcessCount(ProcessManagerADT pm);
+uint64_t zombieProcessCount(ProcessManagerADT pm);
+
+PCB *getForegroundProcess(ProcessManagerADT pm);
+bool isCurrentProcessForeground(ProcessManagerADT pm, pid_t pid);
+bool isIdleProcess(ProcessManagerADT pm, pid_t pid);
+bool isForegroundProcess(PCB *process);
+
+/* kill / terminate */
+PCB *killProcess(ProcessManagerADT pm, pid_t pid, uint64_t ret, State state);
+
+/* fds helpers */
+int stdintProcess(ProcessManagerADT pm, pid_t pid);
+int stdoutProcess(ProcessManagerADT pm, pid_t pid);
+
+/* enqueue helpers */
+void addToReady(ProcessManagerADT list, PCB *process);
+void addToBlocked(ProcessManagerADT list, PCB *process);
+void addToBlockedBySem(ProcessManagerADT list, PCB *process);
 
 #endif // PROCESS_H

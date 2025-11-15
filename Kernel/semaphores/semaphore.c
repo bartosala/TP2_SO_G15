@@ -1,6 +1,6 @@
 #include "../../Shared/shared_structs.h"
 #include <memoryManager.h>
-#include <doubleLinkedList.h>
+#include <queue.h>
 #include <scheduler.h>
 #include <semaphore.h>
 #include <stddef.h>
@@ -92,7 +92,7 @@ int8_t semPost(uint8_t sem)
 		if (pid_ptr == NULL)
 			break;
 		removeElement(semaphore->semaphores[sem].waitingProcesses, pid_ptr);
-		uint16_t pid = (uint16_t)(*pid_ptr);
+		pid_t pid = (pid_t)(*pid_ptr);
 		unblockProcessBySem(pid);
 		freeMemory(pid_ptr);
 		break;
@@ -114,12 +114,4 @@ int8_t semInit(uint8_t sem, uint8_t value)
 	semaphore->semaphores[sem].value = value;
 	semaphore->semaphores[sem].used = USED;
 	return 0;
-}
-
-int8_t semCheck(uint8_t sem)
-{
-	if (!isValidSemaphore(sem)) {
-		return -1;
-	}
-	return semaphore->semaphores[sem].used;
 }

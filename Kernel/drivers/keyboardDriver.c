@@ -146,3 +146,11 @@ char getChar()
 	pipeRead(stdin_fd, &c, 1);
 	return c;
 }
+
+void clear_buffer()
+{
+	int stdin_fd = getCurrentStdin();
+	if (stdin_fd != -1) {
+		pipeClear(stdin_fd);
+	}
+}

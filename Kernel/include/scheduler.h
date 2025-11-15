@@ -1,45 +1,131 @@
-#include <stdint.h>
-#include <memoryManager.h>
+#ifndef SCHEDULER_H
+#define SCHEDULER_H
+
+#include "../../Shared/shared_structs.h"
+#include <defs.h>
 #include <process.h>
-#include <stddef.h>
-#include <string.h>
-#include <semaphore.h>
-#include <pipe.h>
-#include <doubleLinkedList.h>
+#include <stdint.h>
 
+/**
+ * @brief Schedules the next process to run
+ * @param rsp Current stack pointer
+ * @return uint64_t New stack pointer for next process
+ */
+uint64_t scheduleNext(uint64_t rsp);
 
-#define STACK_SIZE 4096
-#define FIRST_QUANTUM 1
-#define MAX_PROCESSES 1000
+/**
+ * @brief Initializes the scheduler with an idle process
+ * @param idle Function pointer to idle process
+ */
+void startScheduler(processFun idle);
 
-typedef struct SchedulerCDT {
-    PCB process[MAX_PROCESSES];
-    uint8_t count;
-    DoubleLinkedListADT readyList;
-    DoubleLinkedListADT blockedList;
-    uint8_t currentPID;
-    uint64_t quantum;
-    uint8_t started;
-    uint8_t idlePID;
-    uint8_t cantReady;
-} SchedulerCDT;
+/**
+ * @brief Creates a new process
+ * @param name Process name
+ * @param function Entry point function
+ * @param argc Argument count
+ * @param arg Argument array
+ * @param priority Process priority
+ * @param foreground Whether process is foreground (1) or background (0)
+ * @return pid_t Process ID or -1 on failure
+ */
+pid_t createProcess(char *name, processFun function, uint64_t argc, char **arg, uint8_t priority, char foreground,
+                    int stdin, int stdout);
 
-typedef struct SchedulerCDT* SchedulerADT;
+/**
+ * @brief Gets the current process ID
+ * @return pid_t Current process ID or -1 if none
+ */
+pid_t getCurrentPid();
 
-SchedulerADT getSchedulerADT();
-int killProcess(uint16_t pid);
-int changePriority(uint16_t pid, uint8_t newPriority);
-uint16_t createProcess(EntryPoint rip, char **argv, int arc, uint8_t priority, uint16_t fileDescriptors[]);
+/**
+ * @brief Gets the foreground process ID
+ * @return pid_t Foreground process ID or -1 if none
+ */
+pid_t getForegroundPid();
+
+/**
+ * @brief Blocks a process
+ * @param pid Process ID to block
+ * @return uint64_t 0 on success, -1 on failure
+ */
+uint64_t blockProcess(pid_t pid);
+
+/**
+ * @brief Yields CPU to next process
+ */
 void yield();
-int setStatus(uint16_t pid, State status);
-SchedulerADT createScheduler();
-int blockProcess(uint16_t pid);
-int unblockProcess(uint16_t pid);
-int blockProcess(uint16_t pid);
-PCB* getProcess(uint16_t pid);
-uint16_t getPid();
-void* schedule(void * processStackPointer);
-int killFgProcess();
-ProcessInfo* getProcessInfo(int* size);
-int changeFd(uint16_t pid, uint16_t fileDescriptors[]);
-int getFileDescriptor(uint8_t fd);
+
+/**
+ * @brief Unblocks a process
+ * @param pid Process ID to unblock
+ * @return uint64_t 0 on success, -1 on failure
+ */
+uint64_t unblockProcess(pid_t pid);
+
+/**
+ * @brief Kills a process
+ * @param pid Process ID to kill
+ * @param retValue Return value for the killed process
+ * @return uint64_t 0 on success, -1 on failure
+ */
+uint64_t kill(pid_t pid, uint64_t retValue);
+
+/**
+ * @brief Waits for a process to terminate
+ * @param pid Process ID to wait for
+ * @param retValue Pointer to store exit status
+ * @return pid_t Process ID that was waited for or -1 on failure
+ */
+pid_t waitpid(pid_t pid, int32_t *retValue);
+
+/**
+ * @brief Changes process priority
+ * @param pid Process ID
+ * @param newPrio New priority value
+ * @return int8_t New priority or -1 on failure
+ */
+int8_t changePrio(pid_t pid, int8_t newPrio);
+
+/**
+ * @brief Blocks a process by semaphore
+ * @param pid Process ID to block
+ * @return uint64_t 0 on success, -1 on failure
+ */
+uint64_t blockProcessBySem(pid_t pid);
+
+/**
+ * @brief Unblocks a process blocked by semaphore
+ * @param pid Process ID to unblock
+ * @return uint64_t 0 on success, -1 on failure
+ */
+uint64_t unblockProcessBySem(pid_t pid);
+
+/**
+ * @brief Gets information about all processes
+ * @param cantProcesses Pointer to store process count
+ * @return PCB* Array of process information or NULL on failure
+ */
+PCB *getProcessInfo(uint64_t *cantProcesses);
+
+/**
+ * @brief Copies process information
+ * @param dest Destination PCB
+ * @param src Source PCB
+ * @return int16_t 0 on success, -1 on failure
+ */
+int16_t copyProcess(PCB *dest, PCB *src);
+
+/**
+ * @brief Gets current process stdin
+ * @return int File descriptor or -1 if none
+ */
+int getCurrentStdin();
+
+/**
+ * @brief Gets current process stdout
+ * @return int File descriptor or -1 if none
+ */
+int getCurrentStdout();
+
+#endif // SCHEDULER_H
