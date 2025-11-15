@@ -1,12 +1,14 @@
 #include <stdarg.h>
 #include <stdint.h>
-#include "stdlib.h"
+#include <stdlib.h>
 #include <syscall.h>
 
 #define MAX_LENGTH 512
 #define MAX_INT_LENGTH 21
-
-uint16_t fileDescriptors[] = {STDIN, STDOUT, STDERR};
+#define STDIN 0
+#define STDOUT 1
+#define STDERR 2
+#define NULL ((void *)0)
 
 static uint32_t uintToBase(uint64_t value, char *buffer, uint32_t base)
 {

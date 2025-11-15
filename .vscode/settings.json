@@ -9,8 +9,7 @@
         "testfunctions.h": "c",
         "lib.h": "c",
         "pipe.h": "c",
-        "shell.h": "c",
-        "interrupts.h": "c"
+        "shell.h": "c"
     },
     "C_Cpp.default.compilerPath": "/usr/bin/gcc"
 }

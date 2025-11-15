@@ -2,7 +2,7 @@
 #define SEMAPHORE_H
 
 #include "../../Shared/shared_structs.h"
-#include <doubleLinkedList.h>
+#include "double_linked_list.h"
 #include <interrupts.h>
 #include <stdint.h>
 

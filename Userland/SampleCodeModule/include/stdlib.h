@@ -3,14 +3,9 @@
 
 #include <stdarg.h>
 #include <stdint.h>
-#include <stddef.h>
 #include <syscall.h>
-extern uint16_t fileDescriptors[3];
 
 #define EOF -1
-#define STDIN  0
-#define STDOUT 1
-#define STDERR 2
 
 /**
  * @brief Longitud de un string null-terminated
