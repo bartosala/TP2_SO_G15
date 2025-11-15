@@ -103,19 +103,13 @@ static PCB *createProcessOnPCB(char *name, processFun function, uint64_t argc, c
 		process->stdout = (stdout == 1) ? getCurrentStdout() : stdout;
 
 	} else if (process->pid == SHELL_PID) {
-		int pipe_fd = pipeCreate(0);
-		if (pipe_fd < 0) {
-			freeMemory((void *)process->base - STACK_SIZE);
-			freeMemory(process);
-			return NULL;
-		}
-		process->stdin = pipeOpenForPid(0, PIPE_READ, process->pid);
-		if (process->stdin < 0) {
-			freeMemory((void *)process->base - STACK_SIZE);
-			freeMemory(process);
-			return NULL;
-		}
-		process->stdout = 1;
+		process->stdin = createPipe();
+        if (process->stdin < 0) {
+            freeMemory((void*)process->base - STACK_SIZE);
+            freeMemory(process);
+            return NULL;
+        }
+        process->stdout = 1;
 	}
 
 	if (priority != IDLE_PRIORITY)

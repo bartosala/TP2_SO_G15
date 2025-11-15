@@ -1,32 +1,30 @@
-#ifndef SEMAPHORE_H
-#define SEMAPHORE_H
+#ifndef _SEMAPHORE_H
+#define _SEMAPHORE_H
 
-#include "../../Shared/shared_structs.h"
-#include "double_linked_list.h"
-#include <interrupts.h>
 #include <stdint.h>
+#include <queue.h>
+#include <interrupts.h>
+#include "../../Shared/shared_structs.h"
 
-#define NUM_SEMS 100
+#define NUM_SEMS 300
 
-typedef struct sem_t {
-	uint8_t value;
-	uint8_t used;
+typedef struct sem {
+	uint32_t value;
 	uint8_t lock;
-	DoubleLinkedListADT waitingProcesses;
+    uint8_t used;
+	QueueADT blocked;
 } sem_t;
 
-typedef struct SemaphoreCDT {
-	sem_t semaphores[NUM_SEMS];
-} SemaphoreCDT;
 
 typedef struct SemaphoreCDT *SemaphoreADT;
 
-// Function declarations
 SemaphoreADT createSemaphoresManager();
-int8_t semOpen(uint8_t sem);
-int8_t semClose(uint8_t sem);
-int8_t semWait(uint8_t sem);
-int8_t semPost(uint8_t sem);
-int8_t semInit(uint8_t sem, uint8_t value);
+int semInit (int id, uint32_t value);
+int semOpen (int id);
+int semClose(int id);
+int semWait(int id);
+int semPost(int id);
+int wait(sem_t *sem);
+int post(sem_t *sem);
 
-#endif // SEMAPHORE_H
+#endif

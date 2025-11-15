@@ -1,117 +1,116 @@
-#include "../../Shared/shared_structs.h"
+#include "../include/semaphore.h"
+#include <stddef.h>
 #include <memoryManager.h>
 #include <queue.h>
 #include <scheduler.h>
-#include <semaphore.h>
-#include <stddef.h>
 
-#define USED 1
-#define NOT_USED 0
+typedef struct SemaphoreCDT {
+    sem_t semaphores[NUM_SEMS];
+} SemaphoreCDT;
 
-SemaphoreADT semaphore = NULL;
+SemaphoreADT manager = NULL;
 
-static int8_t isValidSemaphore(uint8_t sem);
+#define validateid(id) \
+    do{ \
+        if (id < 0 || id >= NUM_SEMS) { \
+            return -1; \
+        } \
+    } while(0) 
+    
 
-static int8_t isValidSemaphore(uint8_t sem)
-{
-	if (semaphore == NULL || sem >= NUM_SEMS) {
-		return 0;
-	}
-	return 1;
+SemaphoreADT createSemaphoresManager(){
+    manager = allocMemory(sizeof(SemaphoreCDT));
+    if (manager == NULL) {
+        return NULL;
+    }
+
+    for (int i = 0; i < NUM_SEMS; i++) {
+        manager->semaphores[i].value = 0;
+        manager->semaphores[i].lock = 0;
+        manager->semaphores[i].used = 0;
+        manager->semaphores[i].blocked = NULL;
+    }
+    return manager;
 }
 
-SemaphoreADT createSemaphoresManager()
-{
-	SemaphoreADT semManager = (SemaphoreADT)allocMemory(sizeof(SemaphoreCDT));
-	if (semManager != NULL) {
-		for (int i = 0; i < NUM_SEMS; i++) {
-			semManager->semaphores[i].value = 0;
-			semManager->semaphores[i].lock = 0;
-			semManager->semaphores[i].used = NOT_USED;
-			semManager->semaphores[i].waitingProcesses = createDoubleLinkedList();
-		}
-	}
-	return semManager;
+
+int semInit (int id, uint32_t value) {
+    validateid(id);
+
+    if( ! manager->semaphores[id].used ) {
+        manager->semaphores[id].value = value;
+        manager->semaphores[id].lock = 0;
+        manager->semaphores[id].used = 1;
+        manager->semaphores[id].blocked = createQueue();
+
+        if (manager->semaphores[id].blocked == NULL) {
+            freeMemory(manager);
+            return -1;
+        }
+
+        return 0;
+    }
+    return -1;
 }
 
-int8_t semOpen(uint8_t sem)
-{
-	if (!isValidSemaphore(sem) || semaphore->semaphores[sem].used == USED) {
-		return -1; // FALLA ACA
-	}
-	return 0;
+int semOpen (int id) {
+    validateid(id);
+    if (manager->semaphores[id].used) { 
+        return 0;
+    }
+    return -1;
 }
 
-int8_t semClose(uint8_t sem)
-{
-	if (!isValidSemaphore(sem) || semaphore->semaphores[sem].used == NOT_USED) {
+int semClose(int id) {
+    validateid(id);
+	if (! manager->semaphores[id].used) {
 		return -1;
-	}
-	semaphore->semaphores[sem].used = NOT_USED;
-	semaphore->semaphores[sem].value = 0;
-
-	freeList(semaphore->semaphores[sem].waitingProcesses);
-	semaphore->semaphores[sem].waitingProcesses = createDoubleLinkedList();
-	return 0;
+    }
+	freeQueue(manager->semaphores[id].blocked);
+    manager->semaphores[id].used = 0;
+    manager->semaphores[id].value = 0;
+    manager->semaphores[id].lock = 0;
+    return 0;
 }
 
-int8_t semWait(uint8_t sem)
-{
-	if (!isValidSemaphore(sem) || semaphore->semaphores[sem].used == NOT_USED) {
-		return -1;
-	}
-
-	acquire(&semaphore->semaphores[sem].lock);
-	if (semaphore->semaphores[sem].value > 0) {
-		semaphore->semaphores[sem].value--;
-		release(&semaphore->semaphores[sem].lock);
-		return 0;
-	}
-	int *pid = (int *)allocMemory(sizeof(int));
-	if (pid == NULL) {
-		release(&semaphore->semaphores[sem].lock);
-		return -1;
-	}
-	*pid = (int)getCurrentPid();
-	insertLast(semaphore->semaphores[sem].waitingProcesses, pid);
-	release(&semaphore->semaphores[sem].lock);
-	blockProcessBySem(*pid);
-	yield();
-	return 0;
+int semWait (int id) {
+    return wait(&manager->semaphores[id]);
 }
 
-int8_t semPost(uint8_t sem)
-{
-	if (!isValidSemaphore(sem) || semaphore->semaphores[sem].used == NOT_USED) {
-		return -1;
-	}
-	acquire(&semaphore->semaphores[sem].lock);
-
-	while (!isEmpty(semaphore->semaphores[sem].waitingProcesses)) {
-		int *pid_ptr = (int *)getFirst(semaphore->semaphores[sem].waitingProcesses);
-		if (pid_ptr == NULL)
-			break;
-		removeElement(semaphore->semaphores[sem].waitingProcesses, pid_ptr);
-		pid_t pid = (pid_t)(*pid_ptr);
-		unblockProcessBySem(pid);
-		freeMemory(pid_ptr);
-		break;
-	}
-
-	if (isEmpty(semaphore->semaphores[sem].waitingProcesses)) {
-		semaphore->semaphores[sem].value++;
-	}
-
-	release(&semaphore->semaphores[sem].lock);
-	return 0;
+int semPost (int id) {
+    return post(&manager->semaphores[id]);
 }
 
-int8_t semInit(uint8_t sem, uint8_t value)
-{
-	if (!isValidSemaphore(sem) || semaphore->semaphores[sem].used == USED) {
-		return -1;
-	}
-	semaphore->semaphores[sem].value = value;
-	semaphore->semaphores[sem].used = USED;
-	return 0;
+int wait (sem_t *sem){
+    acquire(&sem->lock);
+    if (sem->value > 0) {
+        sem->value--;
+        release(&sem->lock);
+        return 0;
+    }
+    pid_t *pid = (pid_t *)allocMemory(sizeof(pid_t));
+    if (pid == NULL) {
+        release(&sem->lock);
+        return -1; // Memory allocation failed
+    }
+    *pid = getCurrentPid();
+    enqueue(sem->blocked, (void*)pid);
+    release(&sem->lock);
+    blockProcessBySem(*pid);
+    return 0;
+}
+
+int post (sem_t *sem){
+    acquire(&sem->lock);
+    pid_t *pidPtr = (pid_t *)dequeue(sem->blocked);
+    if (pidPtr != NULL) {
+        pid_t pid = *pidPtr;
+        freeMemory(pidPtr);  // Free the memory allocated in wait()
+        unblockProcessBySem(pid);
+        release(&sem->lock);
+        return 0;   
+    }
+    sem->value++;
+    release(&sem->lock);
+    return 0;
 }

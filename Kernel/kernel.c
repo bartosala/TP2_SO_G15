@@ -79,15 +79,15 @@ int main()
 	fontSizeDown(2);
 
 	createMemoryManager((void *)HEAP_START_ADDRESS, HEAP_SIZE);
-	startScheduler(idle);
-	if (createPipeManager() == NULL) {
-		printStr("Error initializing pipe manager\n", RED);
-		return -1;
-	}
+
 	if (createSemaphoresManager() == NULL) {
 		printStr("Error initializing semaphore manager\n", RED);
 		return -1;
 	}
+	
+	startScheduler(idle);
+
+
 	createProcess("shell", (processFun)sampleCodeModuleAddress, 0, NULL, 0, 1, 0, 1);
 	load_idt();
 	clear_buffer();

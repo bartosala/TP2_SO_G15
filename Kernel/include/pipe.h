@@ -1,43 +1,35 @@
 #ifndef PIPE_H
 #define PIPE_H
 
-#include <process.h>
-#include <scheduler.h>
 #include <semaphore.h>
-#include <stdint.h>
 
 #define PIPE_BUFFER_SIZE 100
-
-typedef enum { PIPE_READ = 0, PIPE_WRITE = 1 } pipeEnum;
+#define MAX_PIPES 16
 
 typedef struct {
-	char buffer[PIPE_BUFFER_SIZE];
-	uint32_t readIndex;
-	uint32_t writeIndex;
-	uint32_t count; // Current bytes in buffer
-
-	uint32_t id; // Public identifier for pipe sharing between unrelated processes
-
-	int8_t readerPID; // Current reader process (-1 if none)
-	int8_t writerPID; // Current writer process (-1 if none)
-
-	uint8_t isOpen;         // Pipe state (open/closed)
-	uint8_t isFromTerminal; // Flag to identify if pipe is connected to terminal
-
-	uint8_t readSemId;  // ID of semaphore for blocking reads when empty
-	uint8_t writeSemId; // ID of semaphore for blocking writes when full
-	uint8_t mutexId;    // ID of semaphore for mutual exclusion for buffer access
+    char buffer[PIPE_BUFFER_SIZE];
+    int readIdx;
+    int writeIdx;
+    int count;
+    int semReaders;  // ID del semáforo para lectores
+    int semWriters; // ID del semáforo para escritores
+    int mutex;           // ID del mutex para acceso exclusivo
+    int readers;
+    int writers;
+    int isOpen;
 } pipe_t;
 
-typedef struct PipeManagerCDT *PipeManagerADT;
+typedef struct {
+    pipe_t pipes[MAX_PIPES];
+    int next_pipe_id;
+} pipeManager;
 
-PipeManagerADT createPipeManager();
-int pipeCreate(uint32_t id);
-int pipeOpen(uint32_t id, int mode);
-int pipeOpenForPid(uint32_t id, int mode, pid_t pid); // Open pipe for specific PID
-int pipeRead(int pipe_fd, void *buf, size_t count);
-int pipeWrite(int pipe_fd, const void *buf, size_t count);
-int pipeClose(int pipe_fd);
-int pipeClear(int pipe_fd);
+// Funciones públicas
+void createPipeManager();
+int createPipe();
+int pipeRead(int pipe_id, char *buffer, int size);
+int pipeWrite(int pipe_id, const char *buffer, int size);
+int pipeClose(int pipe_id);
+int pipeClear(int pipe_id);
 
-#endif // PIPE_H
+#endif

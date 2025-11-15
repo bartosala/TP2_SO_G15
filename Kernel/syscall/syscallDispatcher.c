@@ -23,17 +23,6 @@ typedef struct Point2D {
 } Point2D;
 typedef uint64_t (*syscall_fn)(uint64_t rbx, uint64_t rcx, uint64_t rdx);
 
-/*
-static uint64_t syscall_write(uint64_t fd, char *buff, uint64_t length) {
-    if (length < 0) return 1;
-    if (fd > 2 || fd < 0) return 2;
-    uint64_t color = (fd == 1 ? 0x00FFFFFF : (fd == 2 ? 0x00FF0000 : 0));
-    if(!color) return 0;
-    for(int i = 0; i < length; i++)
-        putChar(buff[i],color);
-    return length;
-}
-    */
 
 static uint64_t syscall_write(uint64_t fd, char *buff, uint64_t length)
 {
@@ -69,14 +58,6 @@ static uint64_t syscall_clearScreen()
 	clearText(0);
 	return 0;
 }
-/*
-static uint64_t syscall_read( char* str,  uint64_t length){
-    for(int i = 0; i < length && length > 0; i++){
-        str[i] = getChar();
-    }
-    return length > 0 ? length : 0;
-}
-    */
 
 static uint64_t syscall_read(uint64_t fd, char *str, uint64_t length)
 {
@@ -236,26 +217,7 @@ int syscall_sem_open(uint8_t sem_id)
 
 int syscall_openPipe()
 {
-	static uint32_t nextPipeId = 1;
-	uint32_t pipeId = nextPipeId++;
-
-	int pipe_fd = pipeCreate(pipeId);
-	if (pipe_fd < 0)
-		return -1;
-
-	int read_fd = pipeOpen(pipeId, PIPE_READ);
-	if (read_fd < 0) {
-		pipeClose(pipe_fd);
-		return -1;
-	}
-
-	int write_fd = pipeOpen(pipeId, PIPE_WRITE);
-	if (write_fd < 0) {
-		pipeClose(read_fd);
-		return -1;
-	}
-
-	return pipeId;
+	return createPipe();
 }
 
 int syscall_closePipe(int pipe_id)
