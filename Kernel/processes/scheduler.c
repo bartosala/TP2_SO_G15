@@ -171,7 +171,7 @@ uint64_t blockProcessBySem(pid_t pid)
 		return -1;
 	}
 	if (pid == getCurrentPid()) {
-		yield();
+		yield(); // ACAAAA
 	}
 	return 0;
 }
@@ -179,7 +179,7 @@ uint64_t blockProcessBySem(pid_t pid)
 void yield()
 {
 	quantum = 0;
-	callTimerTick();
+	callTimerTick(); // aca
 }
 
 uint64_t unblockProcess(pid_t pid)
@@ -202,7 +202,7 @@ uint64_t kill(pid_t pid, uint64_t retValue)
 		return -1;
 	}
 
-	freeMemory((void *)process->base - STACK_SIZE);
+	freeMemory((void*)process->base - STACK_SIZE);
 	wakeUpWaitingParent(process->parentPid, pid);
 
 	if (pid == currentPid) {

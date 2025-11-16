@@ -1,23 +1,21 @@
-
-
 all:  bootloader kernel userland image
 
 bootloader:
-	$(MAKE) -C Bootloader MM=$(MM) all
+	cd Bootloader; make all
 
 kernel:
-	$(MAKE) -C Kernel MM=$(MM) all
+	cd Kernel; make all $(if $(MM),MM=-D$(MM),)
 
 userland:
-	$(MAKE) -C Userland MM=$(MM) all
+	cd Userland; make all
 
 image: kernel bootloader userland
-	$(MAKE) -C Image MM=$(MM) all
+	cd Image; make all
 
 clean:
-	$(MAKE) -C Bootloader clean
-	$(MAKE) -C Image clean
-	$(MAKE) -C Kernel clean
-	$(MAKE) -C Userland clean
+	cd Bootloader; make clean
+	cd Image; make clean
+	cd Kernel; make clean
+	cd Userland; make clean
 
 .PHONY: bootloader image collections kernel userland all clean

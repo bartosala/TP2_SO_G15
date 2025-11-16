@@ -87,7 +87,7 @@ static pid_t handle_process_with_args(const char *name, processFun function, cha
 		args[i] = arg_storage[i];
 	}
 
-	int bg = anal_arg(arg, args, expected_argc, 32);
+	int bg = analize_arg(arg, args, expected_argc, 32);
 
 	if (bg == -1) {
 		printferror("%s", usage);

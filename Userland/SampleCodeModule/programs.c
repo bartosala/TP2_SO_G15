@@ -195,7 +195,7 @@ int parse_string(char *arg, char **args, int max_args, int max_size)
 	return arg_count;
 }
 
-int anal_arg(char *arg, char **args, int expected_args, int max_size)
+int analize_arg(char *arg, char **args, int expected_args, int max_size)
 {
 	if (arg == NULL || arg[0] == '\0') {
 		if (expected_args == 0)

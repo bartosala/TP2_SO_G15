@@ -198,8 +198,9 @@ int getInstruction(char *buffer, char *arguments)
 
 static int bufferControl(pipeCmd *pipe_cmd)
 {
-	char *shell_buffer = safe_malloc(BUFFER_SPACE, "Error al asignar memoria para el buffer.\n");
+	char *shell_buffer = malloc(BUFFER_SPACE * sizeof(char));
 	if (shell_buffer == NULL) {
+		printf("Error al asignar memoria para el buffer.\n");
 		return -1;
 	}
 
@@ -211,20 +212,23 @@ static int bufferControl(pipeCmd *pipe_cmd)
 		*(pipe_pos - 1) = 0;
 		*pipe_pos = 0;
 		*(pipe_pos + 1) = 0;
-		char *arg2 = safe_malloc(BUFFER_SPACE, "Error al asignar memoria para arg2.\n");
+		char *arg2 = malloc(BUFFER_SPACE * sizeof(char));
 		pipe_cmd->cmd2.instruction = getInstruction(pipe_pos + 2, arg2);
 		pipe_cmd->cmd2.arguments = arg2;
 		if (pipe_cmd->cmd2.instruction >= 0)
 			instructions++;
 	}
-	char *arg1 = safe_malloc(BUFFER_SPACE, "Error al asignar memoria para arg1.\n");
+	char *arg1 = malloc(BUFFER_SPACE * sizeof(char));
 	pipe_cmd->cmd1.instruction = getInstruction(shell_buffer, arg1);
 	pipe_cmd->cmd1.arguments = arg1;
 	if (pipe_cmd->cmd1.instruction >= 0)
 		instructions++;
 	if (IS_BUILT_IN(pipe_cmd->cmd1.instruction) && IS_BUILT_IN(pipe_cmd->cmd2.instruction)) {
-		error_and_cleanup("No se pueden usar comandos built-in con pipes.\n", pipe_cmd);
-		return -1;
+		printferror("No se pueden usar comandos built-in con pipes.\n");
+        free(pipe_cmd->cmd1.arguments);
+        free(pipe_cmd->cmd2.arguments);
+        free(pipe_cmd);
+        return -1;
 	}
 	if (IS_BUILT_IN(pipe_cmd->cmd1.instruction)) {
 		return 0;

@@ -61,18 +61,17 @@ static uint64_t syscall_clearScreen()
 
 static uint64_t syscall_read(uint64_t fd, char *str, uint64_t length)
 {
-	int actual_fd = fd;
 
 	if (fd >= 3 + MAX_PIPES) {
 		return -1;
 	}
 	if (fd == 0) {
-		actual_fd = getCurrentStdin();
-		if (actual_fd == -1) {
+		fd = getCurrentStdin();
+		if (fd == -1) {
 			return -1;
 		}
 	}
-	return pipeRead(actual_fd, str, length);
+	return pipeRead(fd, str, length);
 }
 
 static uint64_t syscall_fontSizeUp(uint64_t increase)

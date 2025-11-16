@@ -67,5 +67,5 @@ inb:
     ret     
 
 callTimerTick:
-	int 20h
+	int 20h 
 	ret               

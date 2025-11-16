@@ -31,7 +31,7 @@ enum syscall_number {
 	CHANGE_PRIO,
 	GET_PROCESS_INFO,
 	MEM_INFO,
-	EXIT,
+	EXIT, // 19 
 	SEM_OPEN,
 	SEM_WAIT,
 	SEM_POST,

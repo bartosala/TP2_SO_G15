@@ -84,7 +84,7 @@ int pipeRead(int pipe_id, char *buffer, int size) {
 
     
     for(int i = 0; i < size; i++) {
-        semWait(pipe->semReaders); 
+        semWait(pipe->semReaders);  // ACAAAAAAAA
         semWait(pipe->mutex);          
         
         if(pipe->count > 0) {

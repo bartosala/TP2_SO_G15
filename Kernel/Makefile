@@ -1,22 +1,11 @@
 include Makefile.inc
 
 KERNEL=kernel.bin
-
-# Filter memory manager source based on MM flag
-ifeq ($(MM),BUDDY)
-    MM_SOURCE=Memorymanager/BuddyMemoryManager.c
-    MM_FLAG=BUDDY
-else
-    MM_SOURCE=Memorymanager/bitmapMemoryManager.c
-    MM_FLAG=BITMAP
-endif
-
-SOURCES=$(wildcard *.c) $(MM_SOURCE) $(wildcard interrupts/*.c) $(wildcard drivers/*.c) $(wildcard processes/*.c) $(wildcard syscall/*.c) $(wildcard semaphores/*.c) $(wildcard pipes/*.c)
+SOURCES=$(wildcard *.c drivers/*.c interrupts/*.c Memorymanager/*.c processes/*.c syscall/*.c semaphores/*.c pipes/*.c)
 SOURCES_ASM=$(wildcard asm/*.asm)
 OBJECTS=$(SOURCES:.c=.o)
 OBJECTS_ASM=$(SOURCES_ASM:.asm=.o)
 LOADERSRC=loader.asm
-
 LOADEROBJECT=$(LOADERSRC:.asm=.o)
 STATICLIBS=
 
@@ -28,15 +17,15 @@ $(KERNEL): $(LOADEROBJECT) $(OBJECTS) $(STATICLIBS) $(OBJECTS_ASM)
 
 
 %.o: %.c
-	$(GCC) $(GCCFLAGS) -D$(MM_FLAG) -I./include -c $< -o $@
+	$(GCC) $(GCCFLAGS) -I./include -I../SharedLibraries $(MM) -c $< -o $@
 
-%.o : %.asm
+%.o : %.asm drivers/keyboardDriver.o drivers/time.o processes/scheduler.o 
 	$(ASM) $(ASMFLAGS) $< -o $@
 
 $(LOADEROBJECT):
 	$(ASM) $(ASMFLAGS) $(LOADERSRC) -o $(LOADEROBJECT)
 
 clean:
-	rm -rf asm/*.o *.o Memorymanager/*.o *.bin
+	rm -rf asm/*.o *.o *.bin */*.o
 
 .PHONY: all clean

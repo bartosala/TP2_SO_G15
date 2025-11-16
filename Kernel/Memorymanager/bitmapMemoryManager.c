@@ -1,4 +1,4 @@
-#ifdef BITMAP
+#ifndef BUDDY
 #include "../../Shared/shared_structs.h"
 #include "memoryManager.h"
 #include <defs.h>

@@ -37,7 +37,7 @@ int parse_string(char *arg, char **args, int max_args, int max_size);
  * @return -1 si hay error en el parsing, 0 si los argumentos son correctos y no hay &, 1 si los argumentos son
  * correctos y hay &
  */
-int anal_arg(char *arg, char **args, int expected_args, int max_size);
+int analize_arg(char *arg, char **args, int expected_args, int max_size);
 
 // shellfunctions
 void printHeader();

@@ -96,7 +96,7 @@ int wait (sem_t *sem){
     *pid = getCurrentPid();
     enqueue(sem->blocked, (void*)pid);
     release(&sem->lock);
-    blockProcessBySem(*pid);
+    blockProcessBySem(*pid); // AACAAAAA
     return 0;
 }
 

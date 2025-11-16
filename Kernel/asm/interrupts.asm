@@ -109,7 +109,7 @@ picSlaveMask:
 
 
 ;8254 Timer (Timer Tick)
-_irq00Handler: ; basado en "interesting_handler de la práctica"
+_irq00Handler: 
 	pushState
 	call timer_handler
 	

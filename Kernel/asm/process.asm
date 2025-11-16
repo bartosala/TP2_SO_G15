@@ -8,12 +8,16 @@ wrapper:
     mov rax, 19
     int 80h
 
+.hang: ; era esto lo que fallaba 
+    hlt
+    jmp .hang
+
 stackFrame:
     push rbp
     mov rbp, rsp
     mov rsp, rdi
     and rsp, -16; align
-    push 0      ; ss
+    push 0      ; ss ACA ES CUANDO SE VA A LA DIMENSION DESCONOCIDA 
     push rdi    ; empty
     push 0x202  ; rflags
     push 0x8    ; cs

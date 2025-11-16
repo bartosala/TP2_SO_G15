@@ -1,5 +1,4 @@
 #ifdef BUDDY
-#include "../../Shared/shared_structs.h"
 #include "memoryManager.h"
 #include <defs.h>
 #include <stdint.h>
