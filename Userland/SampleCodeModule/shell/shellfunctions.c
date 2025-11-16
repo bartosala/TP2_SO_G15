@@ -1,4 +1,4 @@
-#include "../../Shared/shared_structs.h"
+#include "../../../Shared/shared_structs.h"
 #include <programs.h>
 #include <shell.h>
 #include <shellfunctions.h>
@@ -158,9 +158,15 @@ uint64_t doHelp(uint64_t argc, char **argv)
 	printf(" - test_prio <max_value>: test de prioridades.\n");
 	printf(" - test_sync <iterations> <use_sem>: test de sincronizacion (0=sin sem, 1=con sem)\n");
 	printf(" - test_malloc_free: test de malloc y free\n");
+	printf(" - mvar <writers> <readers>: lanza la simulacion MVar (background)\n");
 	printf(" - Ctrl + C: mata el proceso en foreground\n");
 	printf(" - Ctrl + D: envia EOF (fin de archivo) al proceso\n");
 	return 0;
+}
+
+pid_t handle_mvar(char *arg, int stdin, int stdout)
+{
+    return handle_process_with_args("mvar", (processFun)mvar, arg, 2, "Uso: mvar <writers> <readers>\n", stdin, stdout, 0);
 }
 
 pid_t handle_help(char *arg, int stdin, int stdout)

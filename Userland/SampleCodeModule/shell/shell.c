@@ -9,7 +9,7 @@
 #define MAX_ECHO 1000
 #define MAX_USERNAME_LENGTH 16
 #define PROMPT "%s@sh$ "
-#define CANT_INSTRUCTIONS 19
+#define CANT_INSTRUCTIONS 20
 uint64_t curr = 0;
 
 typedef enum {
@@ -27,6 +27,7 @@ typedef enum {
 	WC,
 	FILTER,
 	CAT,
+	MVAR,
 	TEST_MALLOC_FREE,
 	KILL,
 	BLOCK,
@@ -136,13 +137,13 @@ static void handle_builtin_command(pipeCmd *pipe_cmd)
 
 static char *inst_list[] = {
     "help", "echo", "clear",  "test_mm", "test_processes",   "test_prio", "test_sync", "ps",      "memInfo", "loop",
-    "nice", "wc",   "filter", "cat",     "test_malloc_free", "kill",      "block",     "unblock", "exit",
+	"nice", "wc",   "filter", "cat",     "mvar", "test_malloc_free", "kill",      "block",     "unblock", "exit",
 };
 
 static pid_t (*instruction_handlers[CANT_INSTRUCTIONS - 4])(char *, int, int) = {
     handle_help,      handle_echo,      handle_clear,  handle_test_mm,  handle_test_processes,
     handle_test_prio, handle_test_sync, handle_ps,     handle_mem_info, handle_loop,
-    handle_nice,      handle_wc,        handle_filter, handle_cat,      handle_test_malloc_free,
+	handle_nice,      handle_wc,        handle_filter, handle_cat,      handle_mvar,      handle_test_malloc_free,
 };
 
 static void (*built_in_handlers[(EXIT - KILL)])(char *) = {

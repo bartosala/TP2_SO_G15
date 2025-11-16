@@ -35,6 +35,7 @@ pid_t handle_wc(char *arg, int sdtin, int stdout);
 pid_t handle_filter(char *arg, int sdtin, int stdout);
 pid_t handle_cat(char *arg, int sdtin, int stdout);
 pid_t handle_test_malloc_free(char *arg, int sdtin, int stdout);
+pid_t handle_mvar(char *arg, int sdtin, int stdout);
 pid_t handle_kill(char *arg, int sdtin, int stdout);
 pid_t handle_block(char *arg, int sdtin, int stdout);
 void kill(char *arg);
