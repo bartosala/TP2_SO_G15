@@ -140,7 +140,6 @@ uint64_t doHelp(uint64_t argc, char **argv)
 	printf(" - help: muestra este menu de ayuda\n");
 	printf(" - echo <texto>: imprime el texto especificado\n");
 	printf(" - clear: borra la pantalla y comienza arriba\n");
-	printf(" - exit: sale de la shell\n");
 	printf(" - memInfo: muestra estado de memoria\n");
 	printf(" - ps: muestra todos los procesos con su informacion\n");
 	printf(" - loop <tiempo>: imprime su PID cada tiempo especificado\n");

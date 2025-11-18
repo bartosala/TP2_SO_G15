@@ -186,41 +186,32 @@ static int64_t syscall_memInfo(memInfo *user_ptr)
 	return 0;
 }
 
-int syscall_sem_wait(uint64_t sem_id)
+int syscall_sem_wait(int sem_id)
 {
-	if ((int64_t)sem_id < 0)
+	if (sem_id < 0 || sem_id >= NUM_SEMS)
 		return -1;
-	return semWait((int)sem_id);
+	return semWait(sem_id);
 }
 
-int syscall_sem_post(uint64_t sem_id)
+int syscall_sem_post(int sem_id)
 {
-	if ((int64_t)sem_id < 0)
+	if (sem_id < 0 || sem_id >= NUM_SEMS)
 		return -1;
-	return semPost((int)sem_id);
+	return semPost(sem_id);
 }
 
-int syscall_sem_close(uint64_t sem_id)
+int syscall_sem_close(int sem_id)
 {
-	if ((int64_t)sem_id < 0)
+	if (sem_id < 0)
 		return -1;
-	return semClose((int)sem_id);
+	return semClose(sem_id);
 }
 
-/*
- * syscall_sem_open now accepts an initial value as second argument so userland
- * can initialize a semaphore with a value. If the semaphore is not used yet
- * we call semInit(id, initialValue). If semInit fails because it's already
- * used, fall back to semOpen to allow idempotent opens.
- */
-int syscall_sem_open(uint64_t sem_id, uint64_t initialValue)
+int syscall_sem_open(int sem_id, uint64_t initial_Value)
 {
-	if ((int64_t)sem_id < 0)
+	if (sem_id < 0 || sem_id >= NUM_SEMS)
 		return -1;
-	int id = (int)sem_id;
-	if (semInit(id, (uint32_t)initialValue) == 0)
-		return 0;
-	return semOpen(id);
+	return semInit(sem_id, initial_Value);
 }
 
 int syscall_openPipe()

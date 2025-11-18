@@ -95,12 +95,6 @@ static void error_and_cleanup(const char *error_msg, pipeCmd *pipe_cmd)
  */
 static int handle_single_command(pipeCmd *pipe_cmd)
 {
-	if (pipe_cmd->cmd1.instruction == EXIT) {
-			free(pipe_cmd->cmd1.arguments);
-			free(pipe_cmd);
-			return 1;
-	}
-
 	pid_t pid = instruction_handlers[pipe_cmd->cmd1.instruction](pipe_cmd->cmd1.arguments, 0, 1);
 	if (pid < 0) {
 		printferror("No se pudo ejecutar el comando.\n");
@@ -136,8 +130,8 @@ static void handle_builtin_command(pipeCmd *pipe_cmd)
     
 
 static char *inst_list[] = {
-    "help", "echo", "clear",  "test_mm", "test_processes",   "test_prio", "test_sync", "ps",      "memInfo", "loop",
-	"nice", "wc",   "filter", "cat",     "mvar", "test_malloc_free", "kill",      "block",     "unblock", "exit",
+	"help", "echo", "clear",  "test_mm", "test_processes",   "test_prio", "test_sync", "ps",      "memInfo", "loop",
+	"nice", "wc",   "filter", "cat",     "mvar", "test_malloc_free", "kill",      "block",     "unblock",
 };
 
 static pid_t (*instruction_handlers[CANT_INSTRUCTIONS - 4])(char *, int, int) = {
@@ -295,7 +289,6 @@ uint64_t shell(uint64_t argc, char **argv)
     
 	printf("  > Bienvenido a la shell interactiva\n");
 	printf("  > Escribe 'help' para ver todos los comandos\n");
-	printf("  > Escribe 'exit' para salir\n");
 	printf("\n");
 
 	printf("  Ingrese su nombre de usuario: ");

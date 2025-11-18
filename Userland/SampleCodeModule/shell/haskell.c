@@ -1,8 +1,5 @@
 #include <programs.h>
 
-// semaphore id used to serialize console output from multiple readers/writers
-#define MVAR_PRINT_SEM 50
-
 // MVar simulation using two pipes:
 // - data_pipe: carries the char values written by writers and consumed by readers
 // - token_pipe: a single-token pipe used as a binary semaphore (1 token means MVar is empty)
@@ -64,10 +61,8 @@ uint64_t mvar_reader_entry(uint64_t argc, char *argv[])
 			continue;
 		}
 
-		// print id and consumed value (serialized via semaphore to avoid interleaving)
-		syscall_sem_wait(MVAR_PRINT_SEM);
-		printf("%s %c\n", idstr, v);
-		syscall_sem_post(MVAR_PRINT_SEM);
+		// print id and consumed value
+		printf("%s%c", idstr, v);
 
 		// release token back to token_pipe
 		char one = 1;
@@ -111,12 +106,6 @@ uint64_t mvar(uint64_t argc, char *argv[])
 	char one = 1;
 	if (syscall_write(token_pipe, &one, 1) <= 0) {
 		printf("Warning: no se pudo inicializar token pipe.\n");
-	}
-
-	// open print semaphore so readers/writers can serialize prints
-	if (syscall_sem_open(MVAR_PRINT_SEM, 1) == -1) {
-		// not fatal: proceed without serialized prints
-		printf("Warning: no se pudo abrir el semaforo de impresion.\n");
 	}
 
 	// spawn writers

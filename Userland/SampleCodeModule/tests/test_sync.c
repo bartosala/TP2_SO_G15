@@ -52,8 +52,8 @@ uint64_t my_process_inc(uint64_t argc, char *argv[])
 			syscall_sem_post(SEM_ID);
 	}
 
-	if (use_sem)
-		syscall_sem_close(SEM_ID);
+	//if (use_sem)
+	//	syscall_sem_close(SEM_ID);
 
 	return 0;
 }
@@ -61,10 +61,21 @@ uint64_t my_process_inc(uint64_t argc, char *argv[])
 uint64_t test_sync(uint64_t argc, char *argv[])
 {
 	uint64_t pids[2 * TOTAL_PAIR_PROCESSES];
+	int8_t use_sem_flag;
 
 	if (argc != 2)
 		return -1;
 
+	if ((use_sem_flag = satoi(argv[1])) < 0)
+    return -1;
+
+ 	if (use_sem_flag) {
+    if (syscall_sem_open(SEM_ID, 1) == -1) {
+      printf("test_sync: ERROR opening semaphore for test_sync\n");
+      return -1;
+    }
+  	}
+	
 	char *argvDec[] = {argv[0], "-1", argv[1], NULL};
 	char *argvInc[] = {argv[0], "1", argv[1], NULL};
 
@@ -81,6 +92,13 @@ uint64_t test_sync(uint64_t argc, char *argv[])
 		syscall_waitpid(pids[i], NULL);
 		syscall_waitpid(pids[i + TOTAL_PAIR_PROCESSES], NULL);
 	}
+
+	  if (use_sem_flag) {
+    if (syscall_sem_close(SEM_ID) == -1) {
+        printf("test_sync: ERROR closing semaphore\n");
+        return -1;
+    }
+  }
 
 	printf("Final value: %d\n", global);
 

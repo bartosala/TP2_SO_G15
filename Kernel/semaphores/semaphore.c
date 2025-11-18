@@ -63,7 +63,7 @@ int semOpen (int id) {
 
 int semClose(int id) {
     validateid(id);
-	if (! manager->semaphores[id].used) {
+	if (!manager->semaphores[id].used) {
 		return -1;
     }
 	freeQueue(manager->semaphores[id].blocked);
