@@ -62,7 +62,7 @@ uint64_t test_mm(uint64_t argc, char *argv[])
 			if (mm_rqs[i].address)
 				free(mm_rqs[i].address);
 	}
-	printf("test_mm OK\n");
+	printfc(COLOR_GREEN, "test_mm OK\n");
 	syscall_exit();
 	return 0;
 }

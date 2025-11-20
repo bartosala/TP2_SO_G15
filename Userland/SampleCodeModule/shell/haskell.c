@@ -48,7 +48,9 @@ uint64_t mvar_writer_entry(uint64_t argc, char *argv[])
 
 		// write the value into data pipe
 		if (syscall_write(data_pipe, (char *)&val, 1) <= 0) {
-			// write error: yield and retry
+			// write error: release token and retry
+			char one = 1;
+			syscall_write(token_pipe, &one, 1);
 			syscall_yield();
 		}
 	}

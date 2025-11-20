@@ -254,7 +254,7 @@ uint64_t processInfo(uint64_t argc, char **argv)
 	PCB *processInfo = syscall_getProcessInfo(&cantProcesses);
 
 	if (cantProcesses == 0 || processInfo == NULL) {
-		printf("No se encontraron procesos.\n");
+		printferror("No se encontraron procesos.\n");
 		return -1;
 	}
 
@@ -311,7 +311,7 @@ uint64_t nice(int argc, char **argv)
 		return 1;
 	}
 
-	printf("Prioridad del proceso %l cambiada a %d\n", pid, new_priority);
+	printfc(COLOR_MAGENTA, "Prioridad del proceso %l cambiada a %d\n", pid, new_priority);
 	return 0;
 }
 
@@ -362,7 +362,7 @@ void kill(char *arg)
 	if (syscall_kill(pid) == -1) {
 		printferror("Error al matar el proceso %l\n", pid);
 	} else {
-		printf("Proceso %l finalizado\n", pid);
+		printfc(COLOR_PURPLE, "Proceso %l finalizado\n", pid);
 	}
 }
 
@@ -376,7 +376,7 @@ void block(char *arg)
 	if (syscall_block(pid) == -1) {
 		printferror("Error al bloquear el proceso %l\n", pid);
 	} else {
-		printf("Proceso %l bloqueado\n", pid);
+		printfc(COLOR_YELLOW, "Proceso %l bloqueado\n", pid);
 	}
 }
 
@@ -390,6 +390,6 @@ void unblock(char *arg)
 	if (syscall_unblock(pid) == -1) {
 		printferror("Error al desbloquear el proceso %l\n", pid);
 	} else {
-		printf("Proceso %l desbloqueado\n", pid);
+		printfc(COLOR_PINK, "Proceso %l desbloqueado\n", pid);
 	}
 }

@@ -24,7 +24,6 @@ int64_t test_processes(uint64_t argc, char *argv[])
 
 	p_rq p_rqs[max_processes];
 
-	printf("Entrando a ciclo infinito, Ctrl+C para terminar el test...");
 	while (1) {
 
 		// Create max_processes processes
@@ -33,7 +32,7 @@ int64_t test_processes(uint64_t argc, char *argv[])
 			                                       1); // prio 2, fg 0 (background), stdin -1, stdout 1
 
 			if (p_rqs[rq].pid == -1) {
-				printf("test_processes: ERROR creating process\n");
+				printfc(COLOR_RED, "test_processes: ERROR creating process\n");
 				return -1;
 			} else {
 				p_rqs[rq].state = RUNNING;
@@ -51,7 +50,7 @@ int64_t test_processes(uint64_t argc, char *argv[])
 				case 0:
 					if (p_rqs[rq].state == RUNNING || p_rqs[rq].state == BLOCKED) {
 						if (syscall_kill(p_rqs[rq].pid) == -1) {
-							printf("test_processes: ERROR killing process\n");
+							printfc(COLOR_RED, "test_processes: ERROR killing process\n");
 							return -1;
 						}
 						p_rqs[rq].state = EXITED;
@@ -62,7 +61,7 @@ int64_t test_processes(uint64_t argc, char *argv[])
 				case 1:
 					if (p_rqs[rq].state == RUNNING) {
 						if (syscall_block(p_rqs[rq].pid) == -1) {
-							printf("test_processes: ERROR blocking process\n");
+							printfc(COLOR_RED,"test_processes: ERROR blocking process\n");
 							return -1;
 						}
 						p_rqs[rq].state = BLOCKED;
@@ -75,7 +74,7 @@ int64_t test_processes(uint64_t argc, char *argv[])
 			for (rq = 0; rq < max_processes; rq++)
 				if (p_rqs[rq].state == BLOCKED && GetUniform(100) % 2) {
 					if (syscall_unblock(p_rqs[rq].pid) == -1) {
-						printf("test_processes: ERROR unblocking process\n");
+						printfc(COLOR_RED, "test_processes: ERROR unblocking process\n");
 						return -1;
 					}
 					p_rqs[rq].state = RUNNING;

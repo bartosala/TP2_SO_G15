@@ -274,9 +274,8 @@ void loop(uint64_t argc, char *argv[])
 	printf("[loop %d] iniciado. Intervalo: %d segundos\n", pid, time);
 
 	while (1) {
-		printf("\n[loop %d] Proceso %d, esperando %d segundos...\n", pid, pid, time);
 		syscall_wait_seconds(time);
-		printf("[loop %d] Proceso %d, espera finalizada.\n", pid, pid);
+		printfc(COLOR_BLUE, "[loop %d] Proceso %d\n", pid, pid);
 	}
 }
 

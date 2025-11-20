@@ -70,7 +70,7 @@ uint64_t test_prio(uint64_t argc, char *argv[])
 	for (i = 0; i < TOTAL_PROCESSES; i++)
 		syscall_waitpid(pids[i], NULL);
 
-	printf("TEST PRIO COMPLETED\n");
+	printfc(COLOR_GREEN,"TEST PRIO COMPLETED\n");
 	syscall_exit();
 	return 0;
 }

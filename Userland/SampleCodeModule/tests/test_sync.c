@@ -58,7 +58,7 @@ uint64_t test_sync(uint64_t argc, char *argv[])
 
  	if (use_sem_flag) {
     if (syscall_sem_open(SEM_ID, 1) == -1) {
-      printf("test_sync: ERROR opening semaphore for test_sync\n");
+      printfc(COLOR_RED, "test_sync: ERROR opening semaphore for test_sync\n");
       return -1;
     }
   	}
@@ -82,12 +82,12 @@ uint64_t test_sync(uint64_t argc, char *argv[])
 
 	  if (use_sem_flag) {
     if (syscall_sem_close(SEM_ID) == -1) {
-        printf("test_sync: ERROR closing semaphore\n");
+        printfc(COLOR_RED, "test_sync: ERROR closing semaphore\n");
         return -1;
     }
   }
 
-	printf("Final value: %d\n", global);
+	printfc(COLOR_GREEN, "Final value: %d\n", global);
 
 	return 0;
 }
