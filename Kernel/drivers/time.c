@@ -13,26 +13,35 @@ void timer_handler() {
 }
 
 int ticks_elapsed() {
-	return ticks;
+	_cli();
+	int t = ticks;
+	_sti();
+	return t;
 }
 
 int seconds_elapsed() {
-	return ticks / frequency;
+	_cli();
+	int t = ticks / frequency;
+	_sti();
+	return t;
 }
 
 void wait_ticks(uint64_t ticksToWait) {
-	//_sti();
-	uint64_t curr = ticks;
-	while(ticks < curr + ticksToWait){
-		yield(); 
+	uint64_t currentTicks;
+	_cli();
+	currentTicks = ticks;
+	_sti();
+	uint64_t targetTicks = currentTicks + ticksToWait;
+	while (currentTicks < targetTicks) {
+		yield();
+		_cli();
+		currentTicks = ticks;
+		_sti();
 	}
 }
 
 void wait_seconds(uint64_t secondsToWait) {
-	time_t curr = getTime(0);
-	while(diffTimeMillis(curr, getTime(0))/1000 < secondsToWait){
-		yield();
-	}
+	wait_ticks(secondsToWait * frequency);
 }
 
 void setup_timer(uint16_t freq) {

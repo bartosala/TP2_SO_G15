@@ -14,7 +14,7 @@
 #include <videoDriver.h>
 
 #define CANT_REGS 19
-#define CANT_SYSCALLS 29
+#define CANT_SYSCALLS 30
 #define MAX_PIPES 16
 extern uint64_t regs[CANT_REGS];
 
@@ -51,6 +51,13 @@ static uint64_t syscall_write(uint64_t fd, char *buff, uint64_t length)
 		break;
 	}
 	return -1;
+}
+
+static uint64_t syscall_write_color(char *buff, uint64_t length, uint32_t color)
+{
+	for (int i = 0; i < length && buff[i] != -1; i++)
+		putChar(buff[i], color);
+	return length;
 }
 
 static uint64_t syscall_clearScreen()
@@ -100,6 +107,11 @@ static uint64_t syscall_wait(uint64_t ticks)
 	return ticks;
 }
 
+static uint64_t syscall_wait_seconds(uint64_t seconds) {
+    wait_seconds(seconds);
+    return seconds;
+}
+
 static uint64_t syscall_allocMemory(uint64_t size)
 {
 	return (uint64_t)allocMemory(size);
@@ -131,10 +143,9 @@ pid_t syscall_create_process(ProcessParams *p)
 
 static uint64_t syscall_exit(uint64_t ret)
 {
-	char char_eof = (char)0xFF;
-	syscall_write(1, &char_eof, 1);
-	kill(getCurrentPid(), ret);
-	return 0;
+	pid_t pid = getCurrentPid();
+	kill(pid, ret);
+	return 0; // This line is never reached, but keeps the function signature consistent
 }
 
 pid_t syscall_getpid()
@@ -269,6 +280,8 @@ uint64_t syscallDispatcher(uint64_t syscall_number, uint64_t arg1, uint64_t arg2
 	    (syscall_fn)syscall_closePipe,
 	    (syscall_fn)syscall_clearPipe,
 	    (syscall_fn)syscall_waitPid,
+	    (syscall_fn)syscall_write_color,
+	    (syscall_fn)syscall_wait_seconds,
 	};
 	uint64_t ret = syscalls[syscall_number](arg1, arg2, arg3);
 	_sti();

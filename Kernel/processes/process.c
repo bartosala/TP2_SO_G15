@@ -277,6 +277,33 @@ PCB *getNextReadyProcess(ProcessManagerADT pm)
 	return nextProcess;
 }
 
+PCB *getNextProcess(ProcessManagerADT pm)
+{
+	if (pm == NULL) {
+		return NULL;
+	}
+
+	if (isQueueEmpty(pm->readyQueue)) {
+		pm->currentProcess = pm->idleProcess;
+		return pm->idleProcess;
+	}
+
+	PCB *nextProcess = (PCB *)dequeue(pm->readyQueue);
+	if (nextProcess == NULL) {
+		return NULL;
+	}
+
+	if (enqueue(pm->readyQueue, nextProcess) != 0) {
+		return NULL;
+	}
+
+	pm->currentProcess = nextProcess;
+	if (isForegroundProcess(nextProcess)) {
+		foregroundProcessSet(pm, nextProcess);
+	}
+	return nextProcess;
+}
+
 int hasNextReadyProcess(ProcessManagerADT pm)
 {
 	if (pm == NULL) {

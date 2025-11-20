@@ -1,6 +1,18 @@
 #ifndef STDLIB_H
 #define STDLIB_H
 
+// Light color definitions (0x00RRGGBB format)
+#define COLOR_WHITE   0x00FFFFFF
+#define COLOR_RED     0x00FF6B6B
+#define COLOR_GREEN   0x0098D8C8
+#define COLOR_BLUE    0x006FC8FF
+#define COLOR_YELLOW  0x00FFE66D
+#define COLOR_MAGENTA 0x00FF6BE6
+#define COLOR_CYAN    0x006BFFF6
+#define COLOR_ORANGE  0x00FFB66B
+#define COLOR_PINK    0x00FFB6D9
+#define COLOR_PURPLE  0x00C896FF
+
 #include <stdarg.h>
 #include <stdint.h>
 #include <syscall.h>
@@ -21,6 +33,15 @@ uint64_t strlen(const char *s);
  * @return cantidad de caracteres impresos
  */
 uint64_t printf(const char *format, ...);
+
+/**
+ * @brief Imprime en pantalla un string formateado con color
+ * @param color Color en formato 0x00RRGGBB (use COLOR_* constants)
+ * @param format string con formato
+ * @param ... argumentos a imprimir
+ * @return cantidad de caracteres impresos
+ */
+uint64_t printfc(uint32_t color, const char *format, ...);
 
 /**
  * @brief Imprime en pantalla un string formateado de error

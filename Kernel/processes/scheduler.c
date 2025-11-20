@@ -146,7 +146,7 @@ uint64_t schedule(uint64_t rsp)
 	if (currentProcess->state == RUNNING)
 		currentProcess->state = READY;
 
-	PCB *nextProcess = getNextReadyProcess(processManager);
+	PCB *nextProcess = getNextProcess(processManager);
 
 	nextProcess->state = RUNNING;
 	currentPid = nextProcess->pid;
@@ -204,6 +204,9 @@ uint64_t kill(pid_t pid, uint64_t retValue)
 
 	freeMemory((void*)process->base - STACK_SIZE);
 	wakeUpWaitingParent(process->parentPid, pid);
+	if (process->parentPid != getIdleProcess(processManager)->pid) {
+		reapCild(process, NULL);
+	}
 
 	if (pid == currentPid) {
 		quantum = 0;

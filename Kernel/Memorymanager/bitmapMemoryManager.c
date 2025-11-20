@@ -67,14 +67,21 @@ static void *markGroupAsUsed(uint32_t blocksNeeded, uint32_t index)
 
 void createMemoryManager(void *start, uint64_t size)
 {
-	uint32_t totalNeeded = size;
-	memoryManager.start = start;
-	memoryManager.blockQty = totalNeeded / BLOCK_SIZE;
-	uint32_t bitMapSize = memoryManager.blockQty / BLOCK_SIZE;
-	totalNeeded += bitMapSize * BLOCK_SIZE;
-	memoryManager.bitmap = start;
+	memoryManager.bitmap = (uint32_t *)HEAP_START_ADDRESS;
+	memoryManager.blockQty = HEAP_SIZE / BLOCK_SIZE;
+
+	// Calculate how many blocks the bitmap itself will occupy.
+	// Each block needs a uint32_t in the bitmap.
+	uint32_t bitmap_size_in_bytes = memoryManager.blockQty * sizeof(uint32_t);
+	uint32_t bitmap_size_in_blocks = (bitmap_size_in_bytes + BLOCK_SIZE - 1) / BLOCK_SIZE;
+
+	// The heap starts right after the bitmap.
+	memoryManager.start = (void *)(HEAP_START_ADDRESS + bitmap_size_in_blocks * BLOCK_SIZE);
+
+	// Adjust the total number of blocks available for allocation.
+	memoryManager.blockQty -= bitmap_size_in_blocks;
+
 	memoryManager.blocksUsed = 0;
-	memoryManager.start = (uint8_t *)memoryManager.bitmap + bitMapSize * BLOCK_SIZE;
 	memoryManager.current = 0;
 	initializeBitmap();
 }

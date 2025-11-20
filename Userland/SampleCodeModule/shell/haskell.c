@@ -5,6 +5,19 @@
 // - token_pipe: a single-token pipe used as a binary semaphore (1 token means MVar is empty)
 // Usage: mvar <num_writers> <num_readers>
 
+// Color palette for readers (light colors)
+static const uint32_t reader_colors[] = {
+	COLOR_RED,
+	COLOR_GREEN,
+	COLOR_BLUE,
+	COLOR_YELLOW,
+	COLOR_MAGENTA,
+	COLOR_CYAN,
+	COLOR_ORANGE
+};
+
+#define MAX_READER_COLORS 7
+
 static void active_wait_random(uint64_t seed)
 {
 	uint64_t iters = (seed % 5 + 1) * 50;
@@ -42,15 +55,17 @@ uint64_t mvar_writer_entry(uint64_t argc, char *argv[])
 	return 0;
 }
 
-// Reader entry: argv: [idstr, data_pipe_id, token_pipe_id, seed, NULL]
+// Reader entry: argv: [color_index, data_pipe_id, token_pipe_id, seed, NULL]
 uint64_t mvar_reader_entry(uint64_t argc, char *argv[])
 {
 	if (argc < 4)
 		return -1;
-	char *idstr = argv[0];
+	int color_idx = satoi(argv[0]);
 	int data_pipe = satoi(argv[1]);
 	int token_pipe = satoi(argv[2]);
 	uint64_t seed = satoi(argv[3]);
+
+	uint32_t color = reader_colors[color_idx % MAX_READER_COLORS];
 
 	while (1) {
 		active_wait_random(seed + 7);
@@ -61,8 +76,8 @@ uint64_t mvar_reader_entry(uint64_t argc, char *argv[])
 			continue;
 		}
 
-		// print id and consumed value
-		printf("%s%c", idstr, v);
+		// print consumed value in color
+		printfc(color, "%c", v);
 
 		// release token back to token_pipe
 		char one = 1;
@@ -85,8 +100,8 @@ uint64_t mvar(uint64_t argc, char *argv[])
 		printf("Error: num_writers debe estar entre 1 y 26.\n");
 		return -1;
 	}
-	if (num_readers <= 0 || num_readers > 20) {
-		printf("Error: num_readers debe estar entre 1 y 20.\n");
+	if (num_readers <= 0 || num_readers > MAX_READER_COLORS) {
+		printf("Error: num_readers debe estar entre 1 y %d.\n", MAX_READER_COLORS);
 		return -1;
 	}
 
@@ -143,12 +158,9 @@ uint64_t mvar(uint64_t argc, char *argv[])
 		if (!pargv)
 			continue;
 
+		// Pass color index
 		pargv[0] = malloc(16);
-		pargv[0][0] = 'R';
-		uint64ToStr((uint64_t)(i + 1), pargv[0] + 1);
-		size_t len = strlen(pargv[0]);
-		pargv[0][len] = ':';
-		pargv[0][len + 1] = '\0';
+		uint64ToStr((uint64_t)i, pargv[0]);
 
 		pargv[1] = malloc(32);
 		uint64ToStr((uint64_t)data_pipe, pargv[1]);
@@ -168,6 +180,7 @@ uint64_t mvar(uint64_t argc, char *argv[])
 	}
 
 	printf("MVar: %d escritores creados, %d lectores creados.\n", num_writers, num_readers);
+	printf("Usa 'ps' para ver PIDs y controlar los procesos con kill/nice\n");
 
 	return 0;
 }

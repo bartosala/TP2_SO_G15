@@ -2,7 +2,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <syscall.h>
-
 #define MAX_LENGTH 512
 #define MAX_INT_LENGTH 21
 #define STDIN 0
@@ -275,6 +274,75 @@ uint64_t printf(const char *format, ...)
 	uint64_t aux = format_printf(STDOUT, format, args);
 	va_end(args);
 	return aux;
+}
+
+uint64_t printfc(uint32_t color, const char *format, ...)
+{
+	char output[MAX_LENGTH];
+	for (int i = 0; i < MAX_LENGTH; i++) {
+		output[i] = 0;
+	}
+
+	va_list args;
+	va_start(args, format);
+
+	int i = 0, k = 0;
+	while (format[i] != 0 && k < MAX_LENGTH - 1) {
+		if (format[i] == '%' && format[i + 1] != 0) {
+			i++;
+			switch (format[i]) {
+			case 'd': {
+				int num = va_arg(args, int);
+				char str[MAX_INT_LENGTH];
+				signedIntToStr(num, str);
+				k = safe_string_copy(output, k, str, MAX_LENGTH);
+				break;
+			}
+			case 'l': {
+				uint64_t num = va_arg(args, uint64_t);
+				char str[MAX_INT_LENGTH];
+				uint64ToStr(num, str);
+				k = safe_string_copy(output, k, str, MAX_LENGTH);
+				break;
+			}
+			case 's': {
+				char *str = va_arg(args, char *);
+				k = safe_string_copy(output, k, str, MAX_LENGTH);
+				break;
+			}
+			case 'c': {
+				uint8_t c = va_arg(args, int);
+				output[k++] = c;
+				break;
+			}
+			case 'x': {
+				int num = va_arg(args, int);
+				char str[MAX_INT_LENGTH];
+				intToHex(num, str);
+				k = safe_string_copy(output, k, str, MAX_LENGTH);
+				break;
+			}
+			case 'p': {
+				uint64_t ptr = va_arg(args, uint64_t);
+				char str[20];
+				output[k++] = '0';
+				output[k++] = 'x';
+				uint64ToHex(ptr, str);
+				k = safe_string_copy(output, k, str, MAX_LENGTH);
+				break;
+			}
+			default:
+				break;
+			}
+		} else {
+			output[k++] = format[i];
+		}
+		i++;
+	}
+
+	va_end(args);
+	uint64_t toReturn = syscall_write_color(output, k, color);
+	return toReturn;
 }
 
 uint64_t printferror(const char *format, ...)

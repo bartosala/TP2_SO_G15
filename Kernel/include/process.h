@@ -28,6 +28,7 @@ int unblockProcessQueueBySem(ProcessManagerADT list, pid_t pid);
 /* queries */
 PCB *getProcess(ProcessManagerADT pm, pid_t pid);
 PCB *getNextReadyProcess(ProcessManagerADT pm);
+PCB *getNextProcess(ProcessManagerADT pm);
 int hasNextReadyProcess(ProcessManagerADT pm);
 PCB *getCurrentProcess(ProcessManagerADT pm);
 

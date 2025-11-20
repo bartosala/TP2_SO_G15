@@ -271,11 +271,12 @@ void loop(uint64_t argc, char *argv[])
 		printf("Error: time debe ser mayor que 0\n");
 		return;
 	}
-	printf("[loop %d] iniciado. Intervalo: %d s\n", pid, time);
+	printf("[loop %d] iniciado. Intervalo: %d segundos\n", pid, time);
 
 	while (1) {
-		printf("\nProceso %d\n", pid);
-		syscall_wait(time);
+		printf("\n[loop %d] Proceso %d, esperando %d segundos...\n", pid, pid, time);
+		syscall_wait_seconds(time);
+		printf("[loop %d] Proceso %d, espera finalizada.\n", pid, pid);
 	}
 }
 

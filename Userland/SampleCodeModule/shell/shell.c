@@ -280,7 +280,7 @@ uint64_t shell(uint64_t argc, char **argv)
 	printf("  ========================================\n");
 	printf("                                          \n");
 	printf("         SHELL - Sistema Operativo                \n");
-	printf("               TP2 - Grupo 15                     \n");
+	printfc(COLOR_CYAN, "               TP2 - Grupo 15                     \n");
 	printf("                                           \n");
 	printf("  ========================================\n");
 	printf("\n");
@@ -327,28 +327,6 @@ uint64_t shell(uint64_t argc, char **argv)
 			break;
 		}
 	}
-
-    
-	printf("\n");
-	printf("  ============================================================\n");
-	printf("  ||                                                        ||\n");
-	printf("  ||                Cerrando la shell...                   ||\n");
-	printf("  ||                                                        ||\n");
-	printf("  ============================================================\n");
-	printf("\n");
-
-	syscall_wait(2);
-	syscall_clearScreen();
-
-	printf("\n\n");
-	syscall_sizeUpFont(1);
-	printf("  ============================================================\n");
-	printf("  ||                                                        ||\n");
-	printf("  ||          Gracias TOTALES - Cerati              		||\n");
-	printf("  ||                                                        ||\n");
-	printf("  ============================================================\n");
-	syscall_sizeDownFont(1);
-	printf("\n");
 
 	syscall_wait(150);
 	syscall_clearScreen();

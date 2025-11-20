@@ -40,7 +40,9 @@ enum syscall_number {
 	OPEN_PIPE,
 	CLOSE_PIPE,
 	CLEAR_PIPE,
-	WAITPID
+	WAITPID,
+	WRITE_COLOR,
+	WAIT_SECONDS
 };
 
 uint64_t syscall_read(uint64_t fd, char *buff, uint64_t len)
@@ -51,6 +53,11 @@ uint64_t syscall_read(uint64_t fd, char *buff, uint64_t len)
 uint64_t syscall_write(uint64_t fd, char *buff, uint64_t len)
 {
 	return syscall(WRITE, fd, (uint64_t)buff, len);
+}
+
+uint64_t syscall_write_color(char *buff, uint64_t len, uint32_t color)
+{
+	return syscall(WRITE_COLOR, (uint64_t)buff, len, (uint64_t)color);
 }
 
 uint64_t syscall_clearScreen()
@@ -189,4 +196,8 @@ int syscall_clear_pipe(int pipe_id)
 pid_t syscall_waitpid(pid_t pid, int32_t *status)
 {
 	return syscall(WAITPID, pid, (uint64_t)status, 0);
+}
+
+uint64_t syscall_wait_seconds(uint64_t seconds) {
+    return syscall(WAIT_SECONDS, seconds, 0, 0);
 }

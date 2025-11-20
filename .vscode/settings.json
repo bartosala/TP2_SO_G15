@@ -9,7 +9,11 @@
         "testfunctions.h": "c",
         "lib.h": "c",
         "pipe.h": "c",
-        "shell.h": "c"
+        "shell.h": "c",
+        "array": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp"
     },
-    "C_Cpp.default.compilerPath": "/usr/bin/gcc"
+    "C_Cpp.default.compilerPath": "/usr/bin/gcc",
+    "C_Cpp.errorSquiggles": "disabled"
 }
