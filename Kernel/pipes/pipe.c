@@ -7,6 +7,11 @@ static pipeManager pipes;
 static int next_sem_id = 0;
 static int pipeManagerInit = 0;
 
+/*
+ * ensurePipeManagerInit
+ * Ensures the global pipe manager is initialized exactly once.
+ * Returns 0 always (initialization is idempotent).
+ */
 static int ensurePipeManagerInit() {
     if (!pipeManagerInit) {
         createPipeManager();
@@ -15,6 +20,10 @@ static int ensurePipeManagerInit() {
     return 0;
 }
 
+/*
+ * PIPE_ID_CHECK: validate a pipe id and map exported ids (>2) to internal
+ * array indices. Returns -1 on invalid id or closed pipe.
+ */
 #define PIPE_ID_CHECK(id) \
     if(id < 0 || id >= MAX_PIPES) { \
         return -1; \
@@ -27,6 +36,9 @@ static int ensurePipeManagerInit() {
     }
 
 void createPipeManager() {
+    /*
+     * Initialize the manager: mark all pipes closed and clear indices/counters.
+     */
     pipes.next_pipe_id = 0;
     for(int i = 0; i < MAX_PIPES; i++) {
         pipes.pipes[i].isOpen = 0;
@@ -37,7 +49,7 @@ void createPipeManager() {
         pipes.pipes[i].writers = 0;
         pipes.pipes[i].semReaders = -1;
         pipes.pipes[i].semWriters = -1;
-        pipes.pipes[i].mutex = -1; 
+        pipes.pipes[i].mutex = -1;
     }
 }
 
@@ -81,23 +93,26 @@ int pipeRead(int pipe_id, char *buffer, int size) {
         return -1;
     pipe_t *pipe = &pipes.pipes[pipe_id];
     int bytes_read = 0;
+    /*
+     * Read loop: for each requested byte, wait for a reader-count token
+     * (blocks until data available), then grab the mutex, consume one
+     * byte from the circular buffer and release the mutex/writer token.
+     */
+    for (int i = 0; i < size; i++) {
+        semWait(pipe->semReaders);    /* wait until data available */
+        semWait(pipe->mutex);         /* enter critical section */
 
-    
-    for(int i = 0; i < size; i++) {
-        semWait(pipe->semReaders);  // ACAAAAAAAA
-        semWait(pipe->mutex);          
-        
-        if(pipe->count > 0) {
+        if (pipe->count > 0) {
             buffer[i] = pipe->buffer[pipe->readIdx];
             pipe->readIdx = (pipe->readIdx + 1) % PIPE_BUFFER_SIZE;
             pipe->count--;
             bytes_read++;
         }
-        
-        semPost(pipe->mutex);
-        semPost(pipe->semWriters); 
+
+        semPost(pipe->mutex);        /* leave critical section */
+        semPost(pipe->semWriters);   /* signal writers there is space */
     }
-    
+
     return bytes_read;
 }
 
@@ -120,11 +135,11 @@ int pipeWrite(int pipe_id, const char *buffer, int size) {
             pipe->count++;
             bytes_written++;
         }
-        
+
         semPost(pipe->mutex);
-        semPost(pipe->semReaders); 
+        semPost(pipe->semReaders);
     }
-    
+
     return bytes_written;
 }
 
@@ -137,11 +152,12 @@ int pipeClose(int pipe_id) {
     pipe_t *pipe = &pipes.pipes[pipe_id];
     
     // Cerrar semáforos
+    /* close semaphores used by this pipe */
     semClose(pipe->semReaders);
     semClose(pipe->semWriters);
     semClose(pipe->mutex);
-    
-    // Limpiar estructura
+
+    /* clear and mark as closed */
     pipe->isOpen = 0;
     pipe->readIdx = 0;
     pipe->writeIdx = 0;
@@ -151,7 +167,7 @@ int pipeClose(int pipe_id) {
     pipe->semReaders = -1;
     pipe->semWriters = -1;
     pipe->mutex = -1;
-    
+
     return 0;
 }
 
@@ -159,14 +175,14 @@ int pipeClear(int pipe_id){
     ensurePipeManagerInit();
     PIPE_ID_CHECK(pipe_id)
     pipe_t *pipe = &pipes.pipes[pipe_id];
-    
+    /* clear contents of the circular buffer under mutex */
     semWait(pipe->mutex);
-    
+
     pipe->readIdx = 0;
     pipe->writeIdx = 0;
     pipe->count = 0;
-    
+
     semPost(pipe->mutex);
-    
+
     return 0;
 }

@@ -21,11 +21,17 @@
 #define ACS_DATA (ACS_PRESENT | ACS_DSEG | ACS_WRITE)
 #define ACS_STACK (ACS_PRESENT | ACS_DSEG | ACS_WRITE)
 
-#define MEMORY_MANAGER_ADDRESS 0x50000                        // aprovechando espacio vacío de la memoria
-#define SEMAPHORE_MANAGER_ADDRESS 0x60000                     // dirección para el manager de semáforos
-#define HEAP_START_ADDRESS 0x600000                           // dirección de inicio del heap
-#define HEAP_END_ADDRESS (512 * 1024 * 1024 - 1)              // fin del heap y fin de la memoria física
-#define HEAP_SIZE (HEAP_END_ADDRESS - HEAP_START_ADDRESS + 1) // tamaño del heap
-#define BLOCK_SIZE 64                                         // Tamaño de bloque para el bitmap memory manager
+#define MEMORY_MANAGER_ADDRESS 0x50000 /* start address for memory manager */
+
+/* Address reserved for the semaphore manager data structure */
+#define SEMAPHORE_MANAGER_ADDRESS 0x60000
+
+/* Heap bounds and related helpers */
+#define HEAP_START_ADDRESS 0x600000                          /* heap start address */
+#define HEAP_END_ADDRESS (512 * 1024 * 1024 - 1)             /* heap end (physical memory end) */
+#define HEAP_SIZE (HEAP_END_ADDRESS - HEAP_START_ADDRESS + 1)/* heap size in bytes */
+
+/* Default block size used by bitmap/buddy memory manager (bytes) */
+#define BLOCK_SIZE 64
 
 #endif

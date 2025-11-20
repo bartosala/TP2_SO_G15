@@ -140,6 +140,7 @@ int blockProcessQueue(ProcessManagerADT pm, pid_t pid)
 		return -1;
 	}
 
+	/* ensure state is BLOCKED */
 	if (process->state != BLOCKED) {
 		process->state = BLOCKED;
 	}

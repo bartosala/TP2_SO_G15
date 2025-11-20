@@ -19,113 +19,121 @@ uint64_t scheduleNext(uint64_t rsp);
  */
 void startScheduler(processFun idle);
 
-/**
- * @brief Creates a new process
- * @param name Process name
- * @param function Entry point function
- * @param argc Argument count
- * @param arg Argument array
- * @param priority Process priority
- * @param foreground Whether process is foreground (1) or background (0)
- * @return pid_t Process ID or -1 on failure
+/*
+ * startScheduler
+ * @param idle: function pointer used as the idle process entry
+ * Initializes scheduler internals and sets the idle process.
+ */
+void startScheduler(processFun idle);
+
+/*
+ * createProcess
+ * @param name: process name (string)
+ * @param function: entry point for the process
+ * @param argc: number of arguments
+ * @param arg: argv-style argument array
+ * @param priority: scheduling priority value
+ * @param foreground: non-zero for foreground, 0 for background
+ * @param stdin: initial stdin file descriptor
+ * @param stdout: initial stdout file descriptor
+ * @return: pid_t of created process, or -1 on failure
  */
 pid_t createProcess(char *name, processFun function, uint64_t argc, char **arg, uint8_t priority, char foreground,
                     int stdin, int stdout);
 
-/**
- * @brief Gets the current process ID
- * @return pid_t Current process ID or -1 if none
+/*
+ * getCurrentPid
+ * @return: pid_t of current running process, or -1 if none
  */
 pid_t getCurrentPid();
 
-/**
- * @brief Gets the foreground process ID
- * @return pid_t Foreground process ID or -1 if none
+/*
+ * getForegroundPid
+ * @return: pid_t of the foreground process, or -1 if none
  */
 pid_t getForegroundPid();
 
-/**
- * @brief Blocks a process
- * @param pid Process ID to block
- * @return uint64_t 0 on success, -1 on failure
+/*
+ * blockProcess
+ * Blocks the process with given `pid` (scheduler-level blocking)
+ * @return: 0 on success, -1 on failure
  */
 uint64_t blockProcess(pid_t pid);
 
-/**
- * @brief Yields CPU to next process
+/*
+ * yield
+ * Voluntarily yields CPU to the next process (no parameters, no return)
  */
 void yield();
 
-/**
- * @brief Unblocks a process
- * @param pid Process ID to unblock
- * @return uint64_t 0 on success, -1 on failure
+/*
+ * unblockProcess
+ * Unblocks the process identified by `pid` and makes it ready.
+ * @return: 0 on success, -1 on failure
  */
 uint64_t unblockProcess(pid_t pid);
 
-/**
- * @brief Kills a process
- * @param pid Process ID to kill
- * @param retValue Return value for the killed process
- * @return uint64_t 0 on success, -1 on failure
+/*
+ * kill
+ * Kills the process with `pid` and sets its return value to `retValue`.
+ * @return: 0 on success, -1 on failure
  */
 uint64_t kill(pid_t pid, uint64_t retValue);
 
-/**
- * @brief Waits for a process to terminate
- * @param pid Process ID to wait for
- * @param retValue Pointer to store exit status
- * @return pid_t Process ID that was waited for or -1 on failure
+/*
+ * waitpid
+ * Waits for process `pid` to terminate. If pid==-1 waits for any child.
+ * @param retValue: pointer to int32_t to receive exit status
+ * @return: pid of the waited process, or -1 on failure
  */
 pid_t waitpid(pid_t pid, int32_t *retValue);
 
-/**
- * @brief Changes process priority
- * @param pid Process ID
- * @param newPrio New priority value
- * @return int8_t New priority or -1 on failure
+/*
+ * changePrio
+ * Changes the priority of process `pid` to `newPrio`.
+ * @return: the new priority on success, -1 on failure
  */
 int8_t changePrio(pid_t pid, int8_t newPrio);
 
-/**
- * @brief Blocks a process by semaphore
- * @param pid Process ID to block
- * @return uint64_t 0 on success, -1 on failure
+/*
+ * blockProcessBySem
+ * Blocks `pid` on a semaphore (used internally by semaphores)
+ * @return: 0 on success, -1 on failure
  */
 uint64_t blockProcessBySem(pid_t pid);
 
-/**
- * @brief Unblocks a process blocked by semaphore
- * @param pid Process ID to unblock
- * @return uint64_t 0 on success, -1 on failure
+/*
+ * unblockProcessBySem
+ * Unblocks `pid` that was blocked by a semaphore
+ * @return: 0 on success, -1 on failure
  */
 uint64_t unblockProcessBySem(pid_t pid);
 
-/**
- * @brief Gets information about all processes
- * @param cantProcesses Pointer to store process count
- * @return PCB* Array of process information or NULL on failure
+/*
+ * getProcessInfo
+ * Fills an array of PCBs describing current processes (caller owns returned array)
+ * @param cantProcesses: pointer where the function stores number of processes
+ * @return: pointer to first PCB element or NULL on failure
  */
 PCB *getProcessInfo(uint64_t *cantProcesses);
 
-/**
- * @brief Copies process information
- * @param dest Destination PCB
- * @param src Source PCB
- * @return int16_t 0 on success, -1 on failure
+/*
+ * copyProcess
+ * Copies the contents of `src` into `dest` safely.
+ * @return: 0 on success, -1 on failure
  */
 int16_t copyProcess(PCB *dest, PCB *src);
 
-/**
- * @brief Gets current process stdin
- * @return int File descriptor or -1 if none
+/*
+ * getCurrentStdin
+ * @return: stdin file descriptor for current process or -1
  */
 int getCurrentStdin();
 
-/**
- * @brief Gets current process stdout
- * @return int File descriptor or -1 if none
+/*
+ * getCurrentStdout
+ * @return: stdout file descriptor for current process or -1
  */
 int getCurrentStdout();
 
-#endif // SCHEDULER_H
+#endif /* SCHEDULER_H */
