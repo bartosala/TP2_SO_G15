@@ -318,7 +318,7 @@ uint64_t nice(int argc, char **argv)
 pid_t handle_nice(char *arg, int stdin, int stdout)
 {
 	return handle_process_with_args("nice", (processFun)nice, arg, 2, "Uso: nice <pid> <new_priority>\n", stdin, stdout,
-	                                0);
+									0);
 }
 
 uint64_t test_malloc_free(int argc, char **argv)

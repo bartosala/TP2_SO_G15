@@ -75,10 +75,8 @@ void createMemoryManager(void *start, uint64_t size)
 	uint32_t bitmap_size_in_bytes = memoryManager.blockQty * sizeof(uint32_t);
 	uint32_t bitmap_size_in_blocks = (bitmap_size_in_bytes + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
-	// The heap starts right after the bitmap.
-	memoryManager.start = (void *)(HEAP_START_ADDRESS + bitmap_size_in_blocks * BLOCK_SIZE);
-
-	// Adjust the total number of blocks available for allocation.
+    // The heap starts right after the bitmap.
+    memoryManager.start = (void *)((uintptr_t)HEAP_START_ADDRESS + bitmap_size_in_blocks * BLOCK_SIZE);	// Adjust the total number of blocks available for allocation.
 	memoryManager.blockQty -= bitmap_size_in_blocks;
 
 	memoryManager.blocksUsed = 0;

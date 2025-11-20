@@ -34,12 +34,12 @@ pid_t handle_nice(char *arg, int sdtin, int stdout);
 pid_t handle_wc(char *arg, int sdtin, int stdout);
 pid_t handle_filter(char *arg, int sdtin, int stdout);
 pid_t handle_cat(char *arg, int sdtin, int stdout);
-pid_t handle_test_malloc_free(char *arg, int sdtin, int stdout);
 pid_t handle_mvar(char *arg, int sdtin, int stdout);
-pid_t handle_kill(char *arg, int sdtin, int stdout);
-pid_t handle_block(char *arg, int sdtin, int stdout);
+pid_t handle_test_malloc_free(char *arg, int sdtin, int stdout);
+
 void kill(char *arg);
 void block(char *arg);
 void unblock(char *arg);
+uint64_t nice(int argc, char **argv);
 
 #endif // SHELL_FUNCTIONS_H
