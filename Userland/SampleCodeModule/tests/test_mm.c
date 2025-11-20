@@ -28,7 +28,7 @@ uint64_t test_mm(uint64_t argc, char *argv[])
 		printferror("\ntest_mm: error, max_memory debe ser un numero positivo\n");
 		return -1;
 	}
-
+	while(1){
 	char j = 0;
 	for (; j < 3; j++) {
 		rq = 0;
@@ -61,6 +61,7 @@ uint64_t test_mm(uint64_t argc, char *argv[])
 		for (i = 0; i < rq; i++)
 			if (mm_rqs[i].address)
 				free(mm_rqs[i].address);
+	}
 	}
 	printfc(COLOR_GREEN, "test_mm OK\n");
 	syscall_exit();
