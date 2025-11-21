@@ -23,13 +23,13 @@ uint64_t test_mm(uint64_t argc, char *argv[])
 		return -1;
 	}
 	max_memory = satoi(argv[0]);
-	printf("max_memory: %d\n", max_memory);
 	if (max_memory <= 0) {
 		printferror("\ntest_mm: error, max_memory debe ser un numero positivo\n");
 		return -1;
 	}
 	while(1){
 	char j = 0;
+	
 	for (; j < 3; j++) {
 		rq = 0;
 		total = 0;

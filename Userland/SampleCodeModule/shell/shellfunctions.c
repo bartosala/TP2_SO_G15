@@ -19,7 +19,7 @@
  */
 static pid_t create_simple_process(const char *name, processFun function, char foreground, int stdin, int stdout)
 {
-	pid_t pid = syscall_create_process((char *)name, function, NULL, 1, foreground, stdin, stdout);
+	pid_t pid = syscall_create_process((char *)name, function, NULL, 4, foreground, stdin, stdout);
 
 	if (pid < 0) {
 		printferror("Error al crear el proceso %s\n", name);
@@ -54,7 +54,7 @@ static pid_t create_process_with_args(const char *name, processFun function, cha
 	}
 	argv[argc] = NULL;
 
-	pid_t pid = syscall_create_process((char *)name, function, argv, 1, foreground, stdin, stdout);
+	pid_t pid = syscall_create_process((char *)name, function, argv, 5, foreground, stdin, stdout);
 	free(argv);
 
 	if (pid < 0) {

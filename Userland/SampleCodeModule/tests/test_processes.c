@@ -28,7 +28,7 @@ int64_t test_processes(uint64_t argc, char *argv[])
 
 		// Create max_processes processes
 		for (rq = 0; rq < max_processes; rq++) {
-			p_rqs[rq].pid = syscall_create_process("endless_loop", (processFun)endless_loop, argvAux, 2, 0, -1,
+			p_rqs[rq].pid = syscall_create_process("endless_loop", (processFun)endless_loop, argvAux, 5	, 0, -1,
 			                                       1); // prio 2, fg 0 (background), stdin -1, stdout 1
 
 			if (p_rqs[rq].pid == -1) {
