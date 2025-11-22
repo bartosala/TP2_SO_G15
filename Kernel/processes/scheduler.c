@@ -128,7 +128,7 @@ static PCB *createProcessOnPCB(char *name, processFun function, uint64_t argc, c
 	} else if (process->pid == SHELL_PID) {
 		process->stdin = createPipe();
         if (process->stdin < 0) {
-            freeMemory((void*)process->base - STACK_SIZE);
+            freeMemory((void*)process->base - PROCESS_STACK_SIZE);
             freeMemory(process);
             return NULL;
         }
@@ -225,7 +225,7 @@ uint64_t kill(pid_t pid, uint64_t retValue)
 		return -1;
 	}
 
-	freeMemory((void*)process->base - STACK_SIZE);
+	freeMemory((void*)process->base - PROCESS_STACK_SIZE);
 	
 	// Handle parent's children_sem if this was a foreground child
 	pid_t parentPid = process->parentPid;

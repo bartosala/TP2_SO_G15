@@ -14,12 +14,12 @@ static char **copyToStack(uint64_t *paramsBase, uint64_t argc, char **argv);
 uint64_t setUpStackFrame(uint64_t *base, uint64_t entryPoint, uint64_t argc, char **argv)
 {
 	/* allocate stack and position the base at the top */
-	*base = (uint64_t)allocMemory(STACK_SIZE);
+	*base = (uint64_t)allocMemory(PROCESS_STACK_SIZE);
 	if (*base == 0) {
 		return 0;
 	}
 
-	*base += STACK_SIZE;
+	*base += PROCESS_STACK_SIZE;
 
 	/* copy parameters and prepare argv on the stack, then create final frame */
 	uint64_t paramsBase = *base; /* space for parameters */
