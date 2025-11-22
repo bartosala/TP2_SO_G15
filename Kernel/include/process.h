@@ -6,7 +6,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define STACK_SIZE 4096 /* one page */
+#define KERNEL_STACK_SIZE 4096
+#define PROCESS_STACK_SIZE 4096
+
+extern int processes_sem;
 
 typedef struct ProcessManagerCDT *ProcessManagerADT;
 

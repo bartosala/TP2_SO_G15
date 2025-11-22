@@ -17,7 +17,11 @@ typedef struct ProcessManagerCDT {
 	QueueADT blockedQueueBySem;
 	QueueADT zombieQueue;
 	PCB *idleProcess;
+	uint8_t lock; // Global lock for process manager operations
 } ProcessManagerCDT;
+
+extern void acquire(uint8_t *lock);
+extern void release(uint8_t *lock);
 
 ProcessManagerADT createProcessManager()
 {
@@ -27,6 +31,7 @@ ProcessManagerADT createProcessManager()
 	}
 	processManager->foregroundProcess = NULL;
 	processManager->currentProcess = NULL;
+	processManager->lock = 0;
 	processManager->readyQueue = createQueue();
 	if (processManager->readyQueue == NULL) {
 		freeMemory(processManager);
@@ -125,14 +130,25 @@ int blockProcessQueue(ProcessManagerADT pm, pid_t pid)
 	if (pm == NULL) {
 		return -1;
 	}
+	
+	// Don't allow blocking processes that are already blocked by semaphores
+	// This would break the semaphore's ability to unblock them
+	PCB *semBlockedProcess = (PCB *)containsQueue(pm->blockedQueueBySem, &pid, hasPid);
+	if (semBlockedProcess != NULL) {
+		// Process is blocked by semaphore - cannot manually block it
+		return -1;
+	}
+	
 	QueueADT queue = pm->readyQueue;
 	PCB *process = (PCB *)containsQueue(pm->readyQueue, &pid, hasPid);
 	if (process == NULL) {
-		process = (PCB *)containsQueue(pm->blockedQueueBySem, &pid, hasPid);
-		if (process == NULL) {
+		// Check if already in blocked queue
+		process = (PCB *)containsQueue(pm->blockedQueue, &pid, hasPid);
+		if (process != NULL) {
+			// Already blocked
 			return -1;
 		}
-		queue = pm->blockedQueueBySem;
+		return -1;
 	}
 
 	process = switchProcessFromQueues(queue, pm->blockedQueue, pid);
@@ -144,7 +160,7 @@ int blockProcessQueue(ProcessManagerADT pm, pid_t pid)
 	if (process->state != BLOCKED) {
 		process->state = BLOCKED;
 	}
-
+	
 	return 0;
 }
 
@@ -162,7 +178,7 @@ int blockProcessQueueBySem(ProcessManagerADT pm, pid_t pid)
 	if (process->state != BLOCKED) {
 		process->state = BLOCKED;
 	}
-
+	
 	return 0;
 }
 
@@ -180,7 +196,7 @@ int unblockProcessQueue(ProcessManagerADT pm, pid_t pid)
 	if (process->state != READY) {
 		process->state = READY;
 	}
-
+	
 	return 0;
 }
 
@@ -198,7 +214,7 @@ int unblockProcessQueueBySem(ProcessManagerADT pm, pid_t pid)
 	if (process->state != READY) {
 		process->state = READY;
 	}
-
+	
 	return 0;
 }
 

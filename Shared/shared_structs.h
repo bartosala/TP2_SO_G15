@@ -42,6 +42,8 @@ typedef struct {
     //fds
     int stdin;
     int stdout;
+    int children_sem;  // Semaphore ID for waiting on children, -1 if not used
+    int children_count; // Number of foreground children
     char name[NAME_MAX_LENGTH];
 } PCB;
 
