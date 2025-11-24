@@ -216,11 +216,10 @@ uint64_t showMemInfo(int argc, char **argv)
 	return 0;
 }
 
-pid_t handle_mem_info(char *arg, int stdin, int stdout)
-{
-	free(arg);
-	return create_simple_process("memInfo", (processFun)showMemInfo, 1, stdin, stdout);
+pid_t handle_mem_info(char * arg, int stdin, int stdout) {
+    return syscall_create_process("memInfo", (processFun)showMemInfo, NULL, 1, 1, stdin, stdout);
 }
+
 
 pid_t handle_test_mm(char *arg, int stdin, int stdout)
 {
