@@ -5,6 +5,7 @@
 #include <memoryManager.h>
 #include <pipe.h>
 #include <scheduler.h>
+#include <semaphore.h>
 #include <stackFrame.h>
 #include <syscall.h>
 #include <textModule.h>
@@ -83,6 +84,8 @@ static PCB *createProcessOnPCB(char *name, processFun function, uint64_t argc, c
 	process->state = READY;
 	process->priority = priority;
 	process->parentPid = getCurrentPid();
+	process->children_sem = -1;
+	process->children_count = 0;
 
 	process->entryPoint = (uint64_t)function;
 
@@ -101,11 +104,31 @@ static PCB *createProcessOnPCB(char *name, processFun function, uint64_t argc, c
 		}
 		process->stdin = (stdin == TTY) ? getCurrentStdin() : stdin;
 		process->stdout = (stdout == 1) ? getCurrentStdout() : stdout;
+		
+		// If this is a foreground child, setup parent's children semaphore
+		if (foreground && process->parentPid > 0) {
+			PCB *parent = getProcess(processManager, process->parentPid);
+			if (parent != NULL) {
+				// Initialize parent's children_sem if this is first foreground child
+				if (parent->children_sem == -1) {
+					int semId = getFreeSemId();
+					if (semId >= 0) {
+						if (semInit(semId, 0) == 0) {
+							parent->children_sem = semId;
+						}
+					}
+				}
+				// Increment parent's children count
+				if (parent->children_sem >= 0) {
+					parent->children_count++;
+				}
+			}
+		}
 
 	} else if (process->pid == SHELL_PID) {
 		process->stdin = createPipe();
         if (process->stdin < 0) {
-            freeMemory((void*)process->base - STACK_SIZE);
+            freeMemory((void*)process->base - PROCESS_STACK_SIZE);
             freeMemory(process);
             return NULL;
         }
@@ -202,7 +225,25 @@ uint64_t kill(pid_t pid, uint64_t retValue)
 		return -1;
 	}
 
-	freeMemory((void*)process->base - STACK_SIZE);
+	freeMemory((void*)process->base - PROCESS_STACK_SIZE);
+	
+	// Handle parent's children_sem if this was a foreground child
+	pid_t parentPid = process->parentPid;
+	if (parentPid > 0 && process->foreground) {
+		PCB *parent = getProcess(processManager, parentPid);
+		if (parent != NULL && parent->children_sem >= 0) {
+			// Decrement parent's children count
+			parent->children_count--;
+			
+			// If no more foreground children, signal and close semaphore
+			if (parent->children_count == 0) {
+				semPost(parent->children_sem);
+				semClose(parent->children_sem);
+				parent->children_sem = -1;
+			}
+		}
+	}
+	
 	wakeUpWaitingParent(process->parentPid, pid);
 	if (process->parentPid != getIdleProcess(processManager)->pid) {
 		reapCild(process, NULL);

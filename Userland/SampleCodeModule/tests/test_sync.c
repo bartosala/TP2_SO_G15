@@ -7,13 +7,19 @@
 #define SEM_ID 10
 #define TOTAL_PAIR_PROCESSES 2
 
-int64_t global; // shared memory
+volatile int64_t global; // shared memory
 
-void slowInc(int64_t *p, int64_t inc)
+// Random yields break the strict round-robin order so races become visible
+void slowInc(volatile int64_t *p, int64_t inc)
 {
-	uint64_t aux = *p;
-	syscall_yield();
+	int64_t aux = *p;
+	if (GetUniform(100) < 50) {
+		syscall_yield();
+	}
 	aux += inc;
+	if (GetUniform(100) < 50) {
+		syscall_yield();
+	}
 	*p = aux;
 }
 

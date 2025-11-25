@@ -46,6 +46,13 @@ int semOpen (int id);
 int semClose(int id);
 
 /*
+ * getFreeSemId
+ * Finds a free semaphore ID.
+ * @return: semaphore ID on success, -1 if none available
+ */
+int getFreeSemId();
+
+/*
  * semWait
  * Decrements semaphore `id` (may block the calling process).
  * @return: 0 on success, -1 on error

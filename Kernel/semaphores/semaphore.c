@@ -73,6 +73,18 @@ int semClose(int id) {
     return 0;
 }
 
+int getFreeSemId() {
+    if (manager == NULL) {
+        return -1;
+    }
+    for (int i = 0; i < NUM_SEMS; i++) {
+        if (!manager->semaphores[i].used) {
+            return i;
+        }
+    }
+    return -1; // No free semaphore
+}
+
 int semWait (int id) {
     return wait(&manager->semaphores[id]);
 }
